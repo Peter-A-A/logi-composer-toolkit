@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Composer Dashboard Embed</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #1a1a2e;
+      --text-muted: #6c757d;
+      --accent: #4a3f8a;
+      --accent-hover: #362d6b;
+      --border: #dee2e6;
+      --error: #dc3545;
+      --success: #28a745;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Login Form ── */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #login-overlay.hidden { display: none; }
+
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    .login-card h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .login-card p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--accent);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .form-row .form-group { flex: 1; }
+
+    #login-btn {
+      width: 100%;
+      padding: 0.65rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    #login-btn:hover { background: var(--accent-hover); }
+    #login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #login-error {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      display: none;
+    }
+
+    /* ── Dashboard Container ── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #toolbar .title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    #toolbar .status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    #toolbar .status.connected { color: var(--success); }
+
+    #toolbar button {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    #toolbar button:hover { background: var(--bg); }
+
+    #dashboard-container {
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* ── Loading Spinner ── */
+    .spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- ── Login Overlay ── -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <h1>Composer Dashboard</h1>
+      <p class="subtitle">Sign in to load your embedded dashboard</p>
+
+      <div class="form-group">
+        <label for="server-url">Server URL</label>
+        <input type="text" id="server-url" value="https://preview.logi-symphony.com" placeholder="https://your-server.com">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" value="" placeholder="service">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" value="" placeholder="Password">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="effective-account">Effective Account (optional)</label>
+        <input type="text" id="effective-account" value="" placeholder="e.g. Common Admin">
+      </div>
+
+      <div class="form-group">
+        <label for="dashboard-id">Dashboard ID</label>
+        <input type="text" id="dashboard-id" value="6597b290b953476212e25f2e_69d6328a819b936d08b88bae" placeholder="Dashboard ID from URL">
+      </div>
+
+      <div class="form-group">
+        <label for="embed-type">Component Type</label>
+        <select id="embed-type">
+          <option value="dashboard" selected>Dashboard (full)</option>
+          <option value="lite-dashboard">Lite Dashboard</option>
+        </select>
+      </div>
+
+      <button id="login-btn" onclick="connectAndEmbed()">Connect & Embed</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- ── Toolbar + Dashboard ── -->
+  <div id="toolbar" style="display:none;">
+    <span class="title" id="toolbar-title">Composer Dashboard</span>
+    <span class="status connected" id="toolbar-status">Connected</span>
+    <button onclick="location.reload()">Disconnect</button>
+  </div>
+
+  <div id="dashboard-container" style="display:none;">
+    <div class="spinner-wrap" id="loading-spinner">
+      <div class="spinner"></div>
+      <span style="color:var(--text-muted); font-size:0.9rem;">Loading dashboard...</span>
+    </div>
+  </div>
+
+  <script>
+    // ── Config (populated from form) ──
+    let CONFIG = {};
+
+    // ── Auth: LogOn → sessionId → DataDiscoveryToken ──
+    async function getDiscoveryToken() {
+      // Step 1: LogOn
+      const logonBody = {
+        accountName: CONFIG.username,
+        password: CONFIG.password,
+        isWindowsLogOn: false,
+        deleteOtherSessions: false,
+        performDataDiscoveryLogon: true
+      };
+
+      if (CONFIG.effectiveAccount) {
+        logonBody.effectiveAccountName = CONFIG.effectiveAccount;
+      }
+
+      const logonRes = await fetch(`${CONFIG.serverUrl}/managed/API/LogOn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logonBody)
+      });
+
+      if (!logonRes.ok) {
+        throw new Error(`LogOn failed: ${logonRes.status} ${logonRes.statusText}`);
+      }
+
+      const logonData = await logonRes.json();
+      const sessionId = logonData.sessionId;
+
+      if (!sessionId) {
+        throw new Error('LogOn succeeded but no sessionId returned');
+      }
+
+      console.log('[Auth] Got sessionId:', sessionId);
+
+      // Step 2: Get Data Discovery Token
+      const tokenRes = await fetch(`${CONFIG.serverUrl}/managed/API/Session/DataDiscoveryToken/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionId}`
+        }
+      });
+
+      if (!tokenRes.ok) {
+        throw new Error(`DataDiscoveryToken failed: ${tokenRes.status}`);
+      }
+
+      const discoveryToken = await tokenRes.json();
+      console.log('[Auth] Got discovery token');
+
+      return {
+        access_token: discoveryToken,
+        expires_in: 3600
+      };
+    }
+
+    // ── Token provider for embed manager (with refresh) ──
+    let cachedToken = null;
+    let tokenExpiry = 0;
+
+    async function getToken() {
+      const now = Date.now();
+      if (cachedToken && now < tokenExpiry - 60000) {
+        return cachedToken;
+      }
+      cachedToken = await getDiscoveryToken();
+      tokenExpiry = now + (cachedToken.expires_in * 1000);
+      return cachedToken;
+    }
+
+    // ── Main: Connect and embed ──
+    async function connectAndEmbed() {
+      const btn = document.getElementById('login-btn');
+      const errorEl = document.getElementById('login-error');
+
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      errorEl.style.display = 'none';
+
+      // Read form values
+      CONFIG = {
+        serverUrl: document.getElementById('server-url').value.replace(/\/+$/, ''),
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        effectiveAccount: document.getElementById('effective-account').value || '',
+        dashboardId: document.getElementById('dashboard-id').value,
+        embedType: document.getElementById('embed-type').value
+      };
+
+      try {
+        // Test auth first
+        await getToken();
+
+        // Load embed.js dynamically
+        await loadEmbedScript(CONFIG.serverUrl);
+
+        // Show dashboard container
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('toolbar').style.display = 'flex';
+        document.getElementById('dashboard-container').style.display = 'flex';
+        document.getElementById('toolbar-title').textContent = `Dashboard: ${CONFIG.dashboardId.substring(0, 12)}...`;
+
+        // Initialize embed manager
+        const em = await window.initComposerEmbedManager({
+          getToken: () => getToken()
+        });
+
+        // Create and render component
+        const dashboard = await em.createComponent(CONFIG.embedType, {
+          dashboardId: CONFIG.dashboardId,
+          originId: CONFIG.dashboardId,
+          theme: '__platform__',
+          interactivityProfileName: 'interactive',
+          header: {
+            visible: true,
+            showTitle: true,
+            showActions: false
+          },
+          editor: {
+            placement: 'modals'
+          },
+          interactivityOverrides: {
+            FILTER: true,
+            EXPORT: true,
+            MULTI_SELECTION: true,
+            DELETE: false,
+            SHARE: false,
+            PERMISSIONS: false,
+            ADD_NEW: false
+          }
+        });
+
+        // Remove spinner and render
+        document.getElementById('loading-spinner').remove();
+
+        dashboard.render(document.getElementById('dashboard-container'), {
+          width: '100%',
+          height: '100%'
+        });
+
+        // Event listeners
+        dashboard.addEventListener('composer-dashboard-loaded', (e) => {
+          console.log('[Embed] Dashboard loaded:', e.detail.dashboard);
+          document.getElementById('toolbar-status').textContent = 'Dashboard loaded';
+        });
+
+        dashboard.addEventListener('composer-visual-loaded', (e) => {
+          console.log('[Embed] Visual loaded:', e.detail.visualization);
+        });
+
+        dashboard.addEventListener('composer-visual-series-clicked', (e) => {
+          console.log('[Embed] Series clicked:', e.detail);
+        });
+
+      } catch (err) {
+        console.error('[Error]', err);
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Connect & Embed';
+      }
+    }
+
+    // ── Load embed.js from server ──
+    function loadEmbedScript(serverUrl) {
+      return new Promise((resolve, reject) => {
+        // Check if already loaded
+        if (window.initComposerEmbedManager) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.setAttribute('data-name', 'composer-embed-manager');
+        script.src = `${serverUrl}/discovery/embed/embed.js`;
+        script.onload = () => {
+          console.log('[Embed] embed.js loaded');
+          // Give it a moment to initialize globals
+          setTimeout(resolve, 200);
+        };
+        script.onerror = () => reject(new Error('Failed to load embed.js from server'));
+        document.head.appendChild(script);
+      });
+    }
+
+    // ── Allow Enter key to submit ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !document.getElementById('login-overlay').classList.contains('hidden')) {
+        connectAndEmbed();
+      }
+    });
+  </script>
+</body>
+</html>
