@@ -54,7 +54,7 @@ def _headers(has_body: bool = False):
         "Authorization": f"Basic {credentials}",
     }
     if has_body:
-        headers["Content-Type"] = "application/json"
+        headers["Content-Type"] = "application/vnd.composer.v3+json"
     return headers
 
 
