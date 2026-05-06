@@ -91,11 +91,12 @@ toggles                        (feature toggles)
 ### Create a data source
 See `docs/Composer-Data-Sources-Guide.md` for full reference. Key rules:
 
+0. **Prefer built-in joins over custom SQL** — when combining multiple tables, use Composer's built-in join feature (`SINGLE_COLLECTION` entities with `joinsInfo`) rather than custom SQL with JOINs. Built-in joins give Composer visibility into individual tables and fields, enabling field-level security, automatic field detection, and UI-based join editing. Only use custom SQL when the query logic requires it (e.g. subqueries, UNIONs, window functions).
 1. **Always use POST, never PUT** — use `create_source(body={...})` or `composer_api_request(method="POST", path="/api/sources", body={...})`. Composer must generate the hex ID. Using PUT with a custom ID causes problems.
 2. **Use the full `storage.dataEntities` format** — the `entities` shorthand causes HTTP 500 via the REST API. The `create_source` tool auto-transforms the shorthand if you use it, but prefer the full format.
 3. **Custom SQL sources** — use `type: "CUSTOM_SQL"` with `customSql.sql` (NOT `customSql.query`)
 4. **Table join sources** — use `type: "SINGLE_COLLECTION"` (NOT `TABLE`) with `singleCollection` config. Each entity needs a unique `id`. Put `joinsInfo` at the top level, NOT inside `storage`.
-5. **After creation** — set the timebar via `update_source_global_settings(sourceId=..., body={"timebar": {...}})`
+5. **After creation** — set the timebar to the full dataset range via `update_source_global_settings(sourceId=..., body={"timebar": {"enabled": true, "from": "+$start_of_data", "to": "+$end_of_data", "timeField": "<date_field_name>"}})`. Always use `+$start_of_data` / `+$end_of_data` unless the user explicitly requests a narrower range.
 
 Example (custom SQL):
 ```
@@ -108,6 +109,16 @@ create_source(body={
 })
 ```
 
+### Inspect joins on an existing source
+When you GET a source with `get_sources(sourceId=...)`, joins appear in `storage.joins` (not `joinsInfo`). The stored format differs from the creation format:
+- Stored joins reference entities by `dataEntityId` (the entity `id`), not `name`
+- Stored joins include a `dimension` flag (`true` for lookup tables, `false` for fact table)
+- Field names in join conditions use Composer's internal names (lowercased, with `_1` suffix for duplicates)
+
+To understand a source's join structure, look at:
+1. `storage.dataEntities` — lists all tables with their `id`, `name`, and `singleCollection.collection` (actual table name)
+2. `storage.joins` — lists all join conditions between entities
+
 ### List and inspect data sources
 1. List all sources: `composer_api_request(method="GET", path="/api/sources")`
 2. `get_sources(sourceId=...)` — get source details
@@ -115,10 +126,30 @@ create_source(body={
 4. `get_source_fields_1(sourceId=..., fieldName=...)` — get a specific field
 5. `get_source_visual_types(sourceId=...)` — see what chart types are available
 
+### Create a visual / chart
+See `docs/Composer-Visual-Types-Guide.md` for full variable templates for each chart type. Key rules:
+
+1. **Use POST to create** — `composer_api_request(method="POST", path="/api/visuals", body={...})`
+2. **Get the visual type ID** — use `get_source_visual_types(sourceId=...)` to find the correct `visualTypeId` for the target source and chart type
+3. **UBER_BARS requires `Bar Color`** — always include a `"Bar Color"` variable set to the same metric as `"Metric"`. Omitting it causes access errors on the Color slot.
+4. **BUBBLES and DONUT use `Group By` as an object** — not an array like other chart types
+5. **Set time control to full range** — use `+$start_of_data` / `+$end_of_data` in `controlsCfg.timeControlCfg` (only if source has a TIME field)
+6. **Color variables need `colorConfig`** — `Bubble Color` and `Color Metric` (Heat Map) require a `colorConfig` object
+
+### Create a dashboard
+See `docs/Composer-Dashboards-Guide.md` for full reference. Key rules:
+
+1. **Create visuals first** — dashboards reference existing visuals by ID
+2. **Use POST to create** — `composer_api_request(method="POST", path="/api/dashboards", body={...})`
+3. **Generate widget IDs** — each widget needs a unique 32-char hex string. The same ID must appear in both `widgets` and `dashboardLayout.layout`.
+4. **Set unified time bar to full range** — use `+$start_of_data` / `+$end_of_data` in `unifiedBarCfgs.timeControlCfg`
+5. **Cross-filtering is automatic** — when widgets share the same source, clicking filters automatically. Use `fieldLinks` for cross-source linking.
+6. **Drill-through** — add `dashboardLink` to a widget to enable click-through navigation to another dashboard. Set `inheritFilterCfg: true` to pass filter context.
+
 ### Inspect a dashboard
-1. `get_dashboards(id=...)` — load the dashboard definition
+1. `get_dashboards(id=...)` — load the dashboard definition (includes widgets, layout, time bar, drill-through config)
 2. `get_dashboard_reports(dashboardId=..., reportId=...)` — get a specific report/widget
-3. `get_dashboard_interactivity(dashboardId=...)` — see cross-filtering setup
+3. `get_dashboard_interactivity(dashboardId=...)` — see interactivity settings (export, comments, sharing toggles)
 4. `get_dashboard_comments(dashboardId=..., commentId=...)` — read annotations
 
 ### Create custom metrics on a data source

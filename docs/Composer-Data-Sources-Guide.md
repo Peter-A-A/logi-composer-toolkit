@@ -6,6 +6,8 @@ Use these instructions when creating, updating, or managing data sources on Logi
 
 A Composer data source defines what data is available for dashboards and visuals. A source can reference a single database table, a custom SQL query joining multiple tables, or multiple tables joined via Composer's built-in join feature. Each source also has global settings (e.g. timebar/date range), field definitions, and optional custom metrics.
 
+**Prefer built-in joins over custom SQL.** When a source needs to combine multiple tables, use Composer's built-in join feature (`SINGLE_COLLECTION` entities with `joinsInfo`) rather than writing a custom SQL query with JOINs. Built-in joins give Composer visibility into the individual tables and fields, enabling features like field-level security, automatic field detection, and UI-based join editing. Custom SQL should only be used when the query logic cannot be expressed with built-in joins (e.g. complex subqueries, UNIONs, window functions, or database-specific syntax).
+
 ## Critical: creating sources (POST, not PUT)
 
 Always use `POST /api/sources` to create a new source. **Never use `PUT /api/sources/{sourceId}`** for creation, because PUT requires you to specify a `sourceId` in the path, which means you are setting the source ID yourself. Composer must generate source IDs automatically — they use a hex format like `69fa8e090b70396702eb9e59`.
@@ -16,66 +18,15 @@ When using the MCP server, this means using the `composer_api_request` tool with
 
 If you use `PUT /api/sources/my-custom-id`, the source will be created with the ID `my-custom-id` instead of a Composer-generated hex ID. This causes problems because the ID format doesn't match what the system expects, and the source may not behave correctly in the UI. Always let Composer generate the ID by using POST.
 
-## MCP server issues that need fixing
+## MCP server notes (resolved)
 
-### Issue 1: Content-Type header
+The following issues were identified during initial development and have all been fixed in the current MCP server (`server.py`):
 
-The MCP server's `_headers()` function (around line 47 of `server.py`) currently sets:
+1. **Content-Type header** — The server now uses `application/vnd.composer.v3+json` for write operations (POST/PUT/PATCH), which is what the Composer API requires. Using `application/json` caused HTTP 415 errors.
 
-```python
-headers["Content-Type"] = "application/json"
-```
+2. **POST endpoint for source creation** — The server now includes a dedicated `create_source` tool that maps to `POST /api/sources`, letting Composer generate the hex ID automatically. Always use this instead of `update_sources` (PUT) for creating new sources.
 
-The Composer API requires:
-
-```python
-headers["Content-Type"] = "application/vnd.composer.v3+json"
-```
-
-Using `application/json` causes **HTTP 415 Unsupported Media Type** errors on all POST/PUT/PATCH requests. This is the most common error when working with the MCP server and must be fixed before any write operations will succeed.
-
-### Issue 2: no POST endpoint for source creation
-
-The MCP server auto-generates tools from the OpenAPI spec. The `update_sources` tool maps to `PUT /api/sources/{sourceId}`, which requires a source ID in the path. There is no dedicated tool for `POST /api/sources` (creating a source without specifying an ID).
-
-The workaround is to use the generic `composer_api_request` tool:
-
-```
-method: "POST"
-path: "/api/sources"
-body: { ... source definition ... }
-```
-
-Ideally, the MCP server should be updated to include a `create_source` tool that maps to `POST /api/sources`.
-
-### Issue 3: the `entities` shorthand format
-
-Composer's documentation shows a simplified payload format using a top-level `entities` array:
-
-```json
-{
-  "name": "Source Name",
-  "entities": [
-    {
-      "name": "entity_name",
-      "connectionId": "abc123",
-      "schema": "public",
-      "collection": "my_table"
-    }
-  ]
-}
-```
-
-This format does **not** work when the MCP server passes the body directly to the REST API. The API returns **HTTP 500** with the error:
-
-```
-Cannot invoke "com.zoomdata.resource.source.SourceStorageResource.getDataEntities()"
-because the return value of "com.zoomdata.resource.source.SourceResource.getStorage()" is null
-```
-
-The `entities` shorthand is likely transformed by a higher-level gateway or UI layer before reaching the REST API. When calling the API directly (as the MCP server does), you must use the full `storage.dataEntities` format instead. See "Request body formats" below.
-
-The MCP server could be updated to accept the simpler `entities` format and automatically transform it into the `storage.dataEntities` structure before sending to the API.
+3. **Entities shorthand format** — The `create_source` tool includes a `_transform_entities_shorthand()` helper that automatically converts the simplified `entities` format into the full `storage.dataEntities` structure the REST API expects. You can use either format when calling `create_source`. If calling the API directly via `composer_api_request`, use the full `storage.dataEntities` format — the shorthand causes HTTP 500 errors.
 
 ## Request body formats
 
@@ -185,6 +136,207 @@ Use this when you want Composer to handle the join rather than writing SQL. Each
 
 7. **Multiple joins are supported.** Add multiple entries to the `joinsInfo` array to join three or more tables (e.g. fact table to two dimension tables).
 
+8. **Chain joins through intermediary tables.** To join A → B → C, create two join entries: one for A→B and one for B→C. Each join only links two adjacent entities.
+
+### POST vs GET: join format differences
+
+The format used to **create** joins (`joinsInfo`) differs from the format **returned** by GET (`storage.joins`). This is important when reading an existing source and trying to recreate or modify it.
+
+**POST format (`joinsInfo` — used when creating):**
+```json
+"joinsInfo": [
+  {
+    "leftEntityName": "Orders",
+    "rightEntityName": "Products",
+    "type": "INNER",
+    "conditions": [
+      {"leftFieldName": "ProductID", "rightFieldName": "ProductID"}
+    ]
+  }
+]
+```
+
+**GET format (`storage.joins` — returned when reading):**
+```json
+"storage": {
+  "joins": [
+    {
+      "type": "INNER",
+      "leftDataEntity": {
+        "dataEntityId": "untitled_entity",
+        "dimension": false
+      },
+      "rightDataEntity": {
+        "dataEntityId": "products",
+        "dimension": true
+      },
+      "conditions": [
+        {
+          "leftFieldName": "productid",
+          "rightFieldName": "productid_1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Key differences:**
+
+| Aspect | POST (`joinsInfo`) | GET (`storage.joins`) |
+|---|---|---|
+| Location | Top level of request body | Inside `storage` |
+| Entity reference | `leftEntityName` / `rightEntityName` (matches entity `name`) | `leftDataEntity.dataEntityId` / `rightDataEntity.dataEntityId` (matches entity `id`) |
+| Dimension flag | Not specified | `dimension: true/false` — Composer infers which side is the dimension table |
+| Field names | Use original column names from the database | Use Composer's internal field names (lowercased, auto-renamed with `_1` suffix for duplicates) |
+
+### The `dimension` flag
+
+When Composer stores joins, it marks each side as `dimension: true` or `dimension: false`:
+- **`dimension: false`** — the fact/primary table (typically the table with the foreign key)
+- **`dimension: true`** — the lookup/dimension table (typically the table being joined to)
+
+You do NOT need to set this when creating — Composer infers it automatically. It appears only in the GET response.
+
+### Field name auto-renaming in joins
+
+When multiple entities share a column name, Composer auto-renames fields to avoid conflicts:
+- The first entity's field keeps its original name (lowercased): e.g. `productid`
+- The second entity's field gets a `_1` suffix: e.g. `productid_1`
+- A third entity's field gets `_2`, and so on
+
+**This affects join conditions in the stored format.** In the example above, the Orders table has `productid` and the Products table has `productid_1` — even though both are `ProductID` in the database. When reading join conditions from GET, the field names reflect the Composer-renamed versions.
+
+### Real-world example: 4-table chain join
+
+This example comes from a real Composer source (`67c0819fe5d1ed2eb6dc7ef5`) that joins Orders → Products → Subcategories → Categories:
+
+**Creation payload (POST /api/sources):**
+```json
+{
+  "name": "Orders - Cat, Prod, Sub Joins",
+  "storage": {
+    "dataEntities": [
+      {
+        "id": "untitled_entity",
+        "name": "Orders",
+        "type": "SINGLE_COLLECTION",
+        "singleCollection": {
+          "connectionId": "672a7675b64a644ea1e4f45c",
+          "schema": "public",
+          "collection": "orders",
+          "parameters": {}
+        }
+      },
+      {
+        "id": "products",
+        "name": "Products",
+        "type": "SINGLE_COLLECTION",
+        "singleCollection": {
+          "connectionId": "672a7675b64a644ea1e4f45c",
+          "schema": "public",
+          "collection": "products",
+          "parameters": {}
+        }
+      },
+      {
+        "id": "subcategories",
+        "name": "Subcategories",
+        "type": "SINGLE_COLLECTION",
+        "singleCollection": {
+          "connectionId": "672a7675b64a644ea1e4f45c",
+          "schema": "public",
+          "collection": "product_subcategories",
+          "parameters": {}
+        }
+      },
+      {
+        "id": "categories",
+        "name": "Categories",
+        "type": "SINGLE_COLLECTION",
+        "singleCollection": {
+          "connectionId": "672a7675b64a644ea1e4f45c",
+          "schema": "public",
+          "collection": "product_categories",
+          "parameters": {}
+        }
+      }
+    ]
+  },
+  "joinsInfo": [
+    {
+      "leftEntityName": "Orders",
+      "rightEntityName": "Products",
+      "type": "INNER",
+      "conditions": [
+        {"leftFieldName": "ProductID", "rightFieldName": "ProductID"}
+      ]
+    },
+    {
+      "leftEntityName": "Products",
+      "rightEntityName": "Subcategories",
+      "type": "INNER",
+      "conditions": [
+        {"leftFieldName": "SubCategoryID", "rightFieldName": "SubCategoryID"}
+      ]
+    },
+    {
+      "leftEntityName": "Subcategories",
+      "rightEntityName": "Categories",
+      "type": "INNER",
+      "conditions": [
+        {"leftFieldName": "CategoryID", "rightFieldName": "CategoryID"}
+      ]
+    }
+  ],
+  "folderId": "69c3780f0b70396702e7de66"
+}
+```
+
+**How Composer stores it (GET response — `storage.joins`):**
+```json
+"storage": {
+  "joins": [
+    {
+      "type": "INNER",
+      "leftDataEntity": {"dataEntityId": "untitled_entity", "dimension": false},
+      "rightDataEntity": {"dataEntityId": "products", "dimension": true},
+      "conditions": [{"leftFieldName": "productid", "rightFieldName": "productid_1"}]
+    },
+    {
+      "type": "INNER",
+      "leftDataEntity": {"dataEntityId": "products", "dimension": true},
+      "rightDataEntity": {"dataEntityId": "subcategories", "dimension": true},
+      "conditions": [{"leftFieldName": "subcategoryid", "rightFieldName": "subcategoryid_1"}]
+    },
+    {
+      "type": "INNER",
+      "leftDataEntity": {"dataEntityId": "subcategories", "dimension": true},
+      "rightDataEntity": {"dataEntityId": "categories", "dimension": true},
+      "conditions": [{"leftFieldName": "categoryid", "rightFieldName": "categoryid_1"}]
+    }
+  ]
+}
+```
+
+Notice how:
+- `joinsInfo` uses entity `name` → `storage.joins` uses entity `id` (`dataEntityId`)
+- Field names are lowercased and auto-renamed (e.g. `ProductID` → `productid` / `productid_1`)
+- Only Orders (`untitled_entity`) has `dimension: false` — all lookup tables are `dimension: true`
+- The chain is A→B, B→C, C→D — each join connects two adjacent entities
+
+**Global settings for this source:**
+```json
+{
+  "timebar": {
+    "enabled": true,
+    "from": "+$start_of_data",
+    "to": "+$end_of_data",
+    "timeField": "orderdate"
+  }
+}
+```
+
 ## Source ID format rules
 
 When using PUT (which should be avoided for creation), the `sourceId` must follow these rules:
@@ -197,6 +349,8 @@ When using PUT (which should be avoided for creation), the `sourceId` must follo
 These rules do not apply when using POST, since Composer generates the ID automatically.
 
 ## Global settings (timebar / date range)
+
+**Always set the timebar to the full dataset range.** When configuring a source's global settings, use `+$start_of_data` for `from` and `+$end_of_data` for `to`. This ensures dashboards and visuals show all available data by default. Do not use narrower ranges (e.g. last 30 days) unless the user explicitly requests it.
 
 After creating a source, set the global datetime range using:
 

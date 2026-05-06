@@ -1,0 +1,362 @@
+# Logi Composer Dashboards — Instructions for Claude
+
+Use these instructions when creating, updating, or inspecting dashboards on Logi Composer via the REST API and MCP server.
+
+## Overview
+
+A Composer dashboard is a container for one or more widgets, each displaying a visual (chart/table). Dashboards also manage shared time controls, cross-visual filtering, drill-through navigation, interactivity settings, and layout.
+
+## Creating dashboards
+
+Use `composer_api_request(method="POST", path="/api/dashboards", body={...})` to create a dashboard. There is no dedicated `create_dashboard` tool — use the generic passthrough.
+
+### Minimal dashboard structure
+
+```json
+{
+  "name": "My Dashboard",
+  "description": "",
+  "layout": "unset",
+  "dashboardLayout": {
+    "layout": [
+      {
+        "widgetId": "<widget id>",
+        "path": [0, 0],
+        "params": [100, 100]
+      }
+    ],
+    "locked": [],
+    "isResponsive": true
+  },
+  "showDescription": false,
+  "isReportDashboard": false,
+  "widgets": [
+    {
+      "id": "<widget id>",
+      "name": "Widget Title",
+      "description": "",
+      "header": { "visibility": "VISIBLE" },
+      "layout": { "col": 1, "row": 1, "rowSpan": 12, "colSpan": 16 },
+      "visualId": "<visual ID>",
+      "content": {
+        "contentType": "VISUAL",
+        "visualId": "<visual ID>"
+      },
+      "pickers": {
+        "hiddenPickers": [],
+        "visibility": "VISIBLE"
+      }
+    }
+  ],
+  "unifiedBarCfgs": [],
+  "fieldLinks": [],
+  "rowFilters": [],
+  "mutedLinks": []
+}
+```
+
+## Key Concepts
+
+### Widget IDs
+
+Each widget has a unique `id` — a 32-character hex string. When creating dashboards via the API, you generate these yourself (e.g. a random UUID without hyphens). The same ID must match between the `widgets` array entry and the `dashboardLayout.layout` entry.
+
+### Dashboard Layout
+
+The `dashboardLayout` controls widget positioning using a responsive grid system.
+
+```json
+"dashboardLayout": {
+  "layout": [
+    {
+      "widgetId": "af0b2bcb03b94f038e4633ed0a6cc7e4",
+      "path": [0, 0],
+      "params": [100, 50]
+    },
+    {
+      "widgetId": "dca2c1a11fec744b995da04b293bda51",
+      "path": [0, 1],
+      "params": [100, 50]
+    }
+  ],
+  "locked": [],
+  "isResponsive": true
+}
+```
+
+**Fields:**
+- `widgetId` — references the widget in the `widgets` array
+- `path` — `[row, column]` position in the grid (zero-indexed)
+- `params` — `[height%, width%]` as percentages of the container. Values should sum to 100 across widgets in the same row.
+- `locked` — array of widget IDs that cannot be moved/resized
+- `isResponsive` — enable responsive layout mode
+
+**Common layouts:**
+
+Two equal columns:
+```json
+[
+  { "widgetId": "A", "path": [0, 0], "params": [100, 50] },
+  { "widgetId": "B", "path": [0, 1], "params": [100, 50] }
+]
+```
+
+Top row (2 small) + bottom row (1 full-width):
+```json
+[
+  { "widgetId": "A", "path": [0, 0], "params": [45, 50] },
+  { "widgetId": "B", "path": [0, 1], "params": [45, 50] },
+  { "widgetId": "C", "path": [1, 0], "params": [55, 100] }
+]
+```
+
+KPI row (3 small) + chart row (2 medium) — like the Interactive Sales Dashboard:
+```json
+[
+  { "widgetId": "kpi1", "path": [0, 0], "params": [18, 31] },
+  { "widgetId": "kpi2", "path": [0, 1], "params": [18, 34] },
+  { "widgetId": "kpi3", "path": [0, 2], "params": [18, 35] },
+  { "widgetId": "chart1", "path": [1, 0], "params": [78, 65] },
+  { "widgetId": "chart2", "path": [1, 1], "params": [78, 35] }
+]
+```
+
+### Widget Layout (fixed grid)
+
+Each widget also has a `layout` object for the fixed 16-column grid:
+
+```json
+"layout": {
+  "col": 1,
+  "row": 1,
+  "rowSpan": 12,
+  "colSpan": 16
+}
+```
+
+- `col` / `row` — grid position (1-indexed)
+- `colSpan` — width in grid columns (max 16)
+- `rowSpan` — height in grid rows (max 12)
+
+### Widget Header and Pickers
+
+```json
+"header": {
+  "visibility": "VISIBLE"
+}
+```
+
+Header visibility options: `"VISIBLE"`, `"HIDDEN"`, `"HOVER"` (shows on mouse-over)
+
+```json
+"pickers": {
+  "hiddenPickers": [],
+  "visibility": "VISIBLE"
+}
+```
+
+Pickers visibility: `"VISIBLE"`, `"HIDDEN"` — controls whether the visual's filter/settings pickers are shown.
+
+## Unified Time Bar
+
+The `unifiedBarCfgs` array links widgets to a shared time control, so they all filter by the same date range.
+
+```json
+"unifiedBarCfgs": [
+  {
+    "timeControlCfg": {
+      "timeField": "order_date",
+      "from": "+$start_of_data",
+      "to": "+$end_of_data"
+    },
+    "sharpeningCfg": {
+      "prefer": false,
+      "maxQueries": 10
+    },
+    "widgetIds": [
+      "widget_id_1",
+      "widget_id_2",
+      "widget_id_3"
+    ]
+  }
+]
+```
+
+**Key rules:**
+- Always set `from` / `to` to `+$start_of_data` / `+$end_of_data` for full dataset range (unless user specifies otherwise)
+- `timeField` must match the TIME field name in the data source
+- `widgetIds` lists which widgets share this time control
+- You can have multiple `unifiedBarCfgs` entries if widgets use different time fields or sources
+- The `id` field is auto-generated by Composer on creation — omit it when creating
+
+## Cross-Visual Filtering
+
+Cross-visual filtering in Composer works in two ways:
+
+### Automatic (same source)
+
+When multiple widgets on a dashboard use the same data source, clicking a value in one visual automatically filters the others. No explicit configuration needed — this is the default Composer behavior.
+
+### Explicit field linking (different sources)
+
+Use `fieldLinks` to link fields across widgets that use different data sources:
+
+```json
+"fieldLinks": [
+  {
+    "sourceWidgetId": "widget_id_1",
+    "targetWidgetId": "widget_id_2",
+    "sourceField": "category",
+    "targetField": "product_category"
+  }
+]
+```
+
+### Muting links
+
+Use `mutedLinks` to disable specific automatic cross-filter connections:
+
+```json
+"mutedLinks": [
+  {
+    "sourceWidgetId": "widget_id_1",
+    "targetWidgetId": "widget_id_3"
+  }
+]
+```
+
+## Drill-Through
+
+Drill-through lets users click on a visual to navigate to a different dashboard, passing the current filter context. This is configured on individual widgets via the `dashboardLink` property.
+
+```json
+{
+  "id": "8f8891198ac3cd3a83ff58958a686d60",
+  "name": "Sales Value",
+  "visualId": "65a67c17ef94c85d9c331ae0",
+  "content": {
+    "contentType": "VISUAL",
+    "visualId": "65a67c17ef94c85d9c331ae0"
+  },
+  "dashboardLink": {
+    "dashboardId": "65f08b499095047bb8f9bfd7",
+    "inheritFilterCfg": true,
+    "dashboardName": "Drill-through Target"
+  },
+  "header": { "visibility": "VISIBLE" },
+  "pickers": { "hiddenPickers": [], "visibility": "VISIBLE" }
+}
+```
+
+**Fields:**
+- `dashboardId` — the target dashboard to navigate to when clicked
+- `inheritFilterCfg` — if `true`, the clicked value's filter context is passed to the target dashboard (e.g. clicking "Electronics" filters the target to Electronics)
+- `dashboardName` — display name of the target (informational)
+
+**Drill-through workflow:**
+1. Create the target dashboard first (it must already exist)
+2. Create the source dashboard with `dashboardLink` on the widget(s) that should be clickable
+3. The target dashboard should use the same data source (or sources with matching field names) so inherited filters apply correctly
+
+## Interactivity Settings
+
+Use `update_dashboard_interactivity(dashboardId=..., body={...})` to control which features are available to users viewing the dashboard.
+
+```json
+{
+  "name": "linked",
+  "type": "DASHBOARD",
+  "overrideVisualInteractivity": true,
+  "settings": {
+    "COMMENTS": "false",
+    "REPORT_HEADER_FOOTER": "false",
+    "SHARE_REPORT": "false",
+    "EXPORT_XLSX": "false",
+    "EXPORT_PDF": "true"
+  },
+  "visualSettings": {}
+}
+```
+
+**Fields:**
+- `overrideVisualInteractivity` — if `true`, dashboard-level settings override any visual-level interactivity profiles
+- `settings` — feature toggles (string "true"/"false"):
+  - `COMMENTS` — allow comments/annotations
+  - `REPORT_HEADER_FOOTER` — show header/footer
+  - `SHARE_REPORT` — allow sharing
+  - `EXPORT_XLSX` — allow Excel export
+  - `EXPORT_PDF` — allow PDF export
+- `visualSettings` — per-visual overrides (keyed by visual ID)
+
+## Updating dashboards
+
+Use `update_dashboards(id=..., body={...})` with the full dashboard object. Follow the GET-modify-PUT pattern:
+
+1. **GET** the dashboard: `get_dashboards(id=...)`
+2. **Modify** the returned JSON (add/remove widgets, change layout, etc.)
+3. **PUT** the modified object back: `update_dashboards(id=..., body={...})`
+
+## Row Filters
+
+Dashboard-level filters that apply across all widgets:
+
+```json
+"rowFilters": [
+  {
+    "path": "category",
+    "operation": "IN",
+    "value": ["Electronics", "Fashion"]
+  }
+]
+```
+
+## Common Workflows
+
+### Create a dashboard with two visuals side by side
+
+1. Create both visuals first (see Visual Types Guide)
+2. Generate two widget IDs (32-char hex strings)
+3. POST the dashboard with both widgets and a two-column layout
+
+### Add cross-visual filtering
+
+If both visuals use the same source — it works automatically. If they use different sources, add `fieldLinks` mapping the shared dimension fields.
+
+### Add drill-through
+
+1. Create the target dashboard first
+2. On the source dashboard, add `dashboardLink` to the widget that should be clickable
+3. Set `inheritFilterCfg: true` to pass filter context
+
+### Add a shared time bar
+
+Add a `unifiedBarCfgs` entry listing all widget IDs that should share the same time control. Set `timeField` to the TIME field in the source and use `+$start_of_data` / `+$end_of_data` for full range.
+
+## Real-World Examples
+
+### Simple 2-widget dashboard
+
+Dashboard `68d552c123b9f916dc1f1f97` ("User-Profiles Drill-down"):
+- 2 widgets side by side (50/50 split)
+- No unified time bar, no interactivity overrides
+- Layout: `path [0,0]` and `path [0,1]` with `params [100, 50]` each
+
+### Multi-widget with KPI row and cross-filtering
+
+Dashboard `68d50a9023b9f916dc1f1ac0` ("Interactive Sales Dashboard - drill"):
+- 5 widgets: 3 KPIs in top row + 2 charts in bottom row
+- Responsive layout (`isResponsive: true`)
+- All 5 widgets share a unified time bar on `order_date`
+- Interactivity overrides: PDF export enabled, XLSX/comments/share disabled
+- Header visibility varies: KPIs use `HIDDEN`, charts use `HOVER`
+
+### Drill-through source + target
+
+Dashboard `65f08ab29095047bb8f9bfd3` ("Drill-Through Example"):
+- Single widget (Donut chart) with `dashboardLink` to target dashboard
+- `inheritFilterCfg: true` passes the clicked category to the target
+
+Target dashboard `65f08b499095047bb8f9bfd7` ("Drill-through Target"):
+- 3 widgets (Line+Bars, Donut, Table)
+- 2 separate `unifiedBarCfgs` entries for different widget groups
+- Receives filter context from the source dashboard

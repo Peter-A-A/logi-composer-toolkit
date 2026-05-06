@@ -17,6 +17,8 @@ logi-composer-toolkit/
 │   ├── Logi Composer REST API Reference.md             ← REST API endpoint reference
 │   ├── Composer-Custom-Metrics-Guide.md                ← Custom metrics creation guide
 │   ├── Composer-Data-Sources-Guide.md                  ← Data source creation guide (SQL, table joins, global settings)
+│   ├── Composer-Visual-Types-Guide.md                  ← Visual/chart creation guide (bars, pie, KPI, table, pivot, etc.)
+│   ├── Composer-Dashboards-Guide.md                    ← Dashboard creation guide (layout, cross-filtering, drill-through)
 │   └── logi_composer_api_spec_raw.json                 ← Raw OpenAPI 3.1 spec (JSON)
 ├── examples/
 │   └── composer-dashboard-embed.html                   ← Working dashboard embed example
@@ -47,13 +49,31 @@ For a working code example, see `examples/composer-dashboard-embed.html`.
 
 ### "How do I create a data source?"
 Read `docs/Composer-Data-Sources-Guide.md`. This covers:
+- **Prefer built-in joins over custom SQL** — when combining tables, use `SINGLE_COLLECTION` entities with `joinsInfo` rather than custom SQL JOINs. Only use custom SQL when the query requires subqueries, UNIONs, window functions, or database-specific syntax.
 - Why you must use POST (not PUT) to create sources — Composer must generate the hex ID
 - The full `storage.dataEntities` payload format (the `entities` shorthand does NOT work via the REST API)
 - Custom SQL sources (`CUSTOM_SQL` type with `sql` field, not `query`)
 - Multi-table join sources (`SINGLE_COLLECTION` type with `joinsInfo` at top level, entity `id` fields required)
-- Setting global timebar/date range after creation
+- Setting global timebar/date range after creation — always default to full range (`+$start_of_data` to `+$end_of_data`)
 - Complete error reference for common 400/415/500 errors
 - Use the MCP tool `create_source` for POST, or `composer_api_request(method="POST", path="/api/sources", body={...})`
+
+### "How do I create a visual / chart?"
+Read `docs/Composer-Visual-Types-Guide.md`. This covers:
+- POST `/api/visuals` creation structure and required fields
+- Variable templates for every chart type: UBER_BARS, BUBBLES, DONUT/PIE, KPI, RAW_DATA_TABLE, PIVOT_TABLE, FLOATING_BUBBLES, HEAT_MAP
+- Visual type IDs for the UAT environment (query `get_source_visual_types` for other instances)
+- Common pitfalls (e.g. UBER_BARS requires `Bar Color`, BUBBLES/DONUT use `Group By` as object not array)
+
+### "How do I create a dashboard?"
+Read `docs/Composer-Dashboards-Guide.md`. This covers:
+- POST `/api/dashboards` creation structure with widgets and responsive layout
+- Dashboard layout system (`path`, `params` for responsive grid positioning)
+- Unified time bar configuration (`unifiedBarCfgs` linking widgets to shared time controls)
+- Cross-visual filtering (automatic same-source and explicit `fieldLinks` for different sources)
+- Drill-through navigation (`dashboardLink` on widgets to navigate to target dashboards with filter inheritance)
+- Interactivity settings (controlling export, comments, sharing features)
+- Real-world examples: simple 2-widget, multi-widget with KPI row, drill-through source/target
 
 ### "How do I create a custom metric?"
 Read `docs/Composer-Custom-Metrics-Guide.md`. This covers:
