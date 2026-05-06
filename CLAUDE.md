@@ -15,6 +15,8 @@ logi-composer-toolkit/
 ├── docs/
 │   ├── Logi-Composer-Symphony-Embedding-Reference.md   ← Embedding API reference
 │   ├── Logi Composer REST API Reference.md             ← REST API endpoint reference
+│   ├── Composer-Custom-Metrics-Guide.md                ← Custom metrics creation guide
+│   ├── Composer-Data-Sources-Guide.md                  ← Data source creation guide (SQL, table joins, global settings)
 │   └── logi_composer_api_spec_raw.json                 ← Raw OpenAPI 3.1 spec (JSON)
 ├── examples/
 │   └── composer-dashboard-embed.html                   ← Working dashboard embed example
@@ -42,6 +44,24 @@ Read `docs/Logi-Composer-Symphony-Embedding-Reference.md`. This is the primary r
 - Action templates and keysets
 
 For a working code example, see `examples/composer-dashboard-embed.html`.
+
+### "How do I create a data source?"
+Read `docs/Composer-Data-Sources-Guide.md`. This covers:
+- Why you must use POST (not PUT) to create sources — Composer must generate the hex ID
+- The full `storage.dataEntities` payload format (the `entities` shorthand does NOT work via the REST API)
+- Custom SQL sources (`CUSTOM_SQL` type with `sql` field, not `query`)
+- Multi-table join sources (`SINGLE_COLLECTION` type with `joinsInfo` at top level, entity `id` fields required)
+- Setting global timebar/date range after creation
+- Complete error reference for common 400/415/500 errors
+- Use the MCP tool `create_source` for POST, or `composer_api_request(method="POST", path="/api/sources", body={...})`
+
+### "How do I create a custom metric?"
+Read `docs/Composer-Custom-Metrics-Guide.md`. This covers:
+- The PUT endpoint and required headers (`application/vnd.composer.v3+json`)
+- Expression syntax (aggregation functions, WHERE filters, TRANSFORM for time comparisons)
+- Common business metric patterns (ratios, filtered aggregations, period-over-period)
+- Step-by-step MCP workflow (find source → check fields → create metric → verify)
+- Naming conventions and important gotchas (minimal body fields, field names vs labels)
 
 ### "What REST API endpoints are available?"
 Read `docs/Logi Composer REST API Reference.md` for a structured list of all 175 endpoints organized by category (sources, dashboards, visuals, connections, users, permissions, etc.).

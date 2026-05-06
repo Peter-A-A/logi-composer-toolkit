@@ -88,8 +88,28 @@ toggles                        (feature toggles)
 
 ## Common Workflows
 
+### Create a data source
+See `docs/Composer-Data-Sources-Guide.md` for full reference. Key rules:
+
+1. **Always use POST, never PUT** — use `create_source(body={...})` or `composer_api_request(method="POST", path="/api/sources", body={...})`. Composer must generate the hex ID. Using PUT with a custom ID causes problems.
+2. **Use the full `storage.dataEntities` format** — the `entities` shorthand causes HTTP 500 via the REST API. The `create_source` tool auto-transforms the shorthand if you use it, but prefer the full format.
+3. **Custom SQL sources** — use `type: "CUSTOM_SQL"` with `customSql.sql` (NOT `customSql.query`)
+4. **Table join sources** — use `type: "SINGLE_COLLECTION"` (NOT `TABLE`) with `singleCollection` config. Each entity needs a unique `id`. Put `joinsInfo` at the top level, NOT inside `storage`.
+5. **After creation** — set the timebar via `update_source_global_settings(sourceId=..., body={"timebar": {...}})`
+
+Example (custom SQL):
+```
+create_source(body={
+    "name": "My Source",
+    "storage": {"dataEntities": [{
+        "name": "my_entity", "type": "CUSTOM_SQL",
+        "customSql": {"connectionId": "abc123", "sql": "SELECT * FROM schema.table"}
+    }]}
+})
+```
+
 ### List and inspect data sources
-1. There is no "list all sources" endpoint in the spec. You may need to use `composer_api_request("GET", "/api/sources")` or ask the user for a source ID.
+1. List all sources: `composer_api_request(method="GET", path="/api/sources")`
 2. `get_sources(sourceId=...)` — get source details
 3. `get_source_fields(sourceId=...)` — list all fields in the source
 4. `get_source_fields_1(sourceId=..., fieldName=...)` — get a specific field
@@ -100,6 +120,24 @@ toggles                        (feature toggles)
 2. `get_dashboard_reports(dashboardId=..., reportId=...)` — get a specific report/widget
 3. `get_dashboard_interactivity(dashboardId=...)` — see cross-filtering setup
 4. `get_dashboard_comments(dashboardId=..., commentId=...)` — read annotations
+
+### Create custom metrics on a data source
+Custom metrics are calculated fields computed at query time. See `docs/Composer-Custom-Metrics-Guide.md` for full syntax reference.
+
+1. **Find the source** — `composer_api_request(method="GET", path="/api/sources")` or ask the user for the source ID
+2. **Check available fields** — `get_source_fields(sourceId=...)` to see field names for use in expressions
+3. **Create the metric** — `update_source_custom_metrics(sourceId=..., customMetricName="metric_name", body={...})`
+   - `customMetricName`: snake_case, lowercase, no spaces (e.g. `conversion_rate`)
+   - Body must contain ONLY `label`, `expression`, and `dataType` — no other fields
+   - `dataType` is always `"NUMBER"`
+   - Example body: `{"label": "Conversion Rate", "expression": "sum(ad_orders) / sum(clicks)", "dataType": "NUMBER"}`
+4. **Verify** — `composer_api_request(method="GET", path="/api/sources/{sourceId}/custom-metrics/{name}")`
+
+**Critical rules:**
+- The `Content-Type` header MUST be `application/vnd.composer.v3+json` (the server handles this automatically for write operations)
+- Do NOT include `format`, `numberFormat`, `visible`, or any extra fields in the body — they cause 400 errors
+- Use field `name` properties in expressions, not `label` (e.g. `ad_spend_eur` not `Ad Spend Eur`)
+- Expressions support: `sum()`, `avg()`, `min()`, `max()`, `count(*)`, `count()`, `distinct_count()`, `last_value()`, arithmetic (`+`, `-`, `*`, `/`), `WHERE` clauses, and `TRANSFORM` for time comparisons
 
 ### Manage permissions
 Permissions use ACL (Access Control List) bulk operations:
@@ -163,9 +201,24 @@ If the response isn't JSON:
 
 Check `status_code` first. Common codes: 200 (OK), 201 (Created), 204 (No Content for deletes), 401 (token expired), 403 (insufficient permissions), 404 (not found).
 
+## Common API Errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| 415 Unsupported Media Type | Wrong Content-Type header | Server handles this automatically — uses `application/vnd.composer.v3+json` for write operations |
+| 500 "storage is null" | Used `entities` shorthand instead of `storage.dataEntities` | Use full `storage.dataEntities` format, or use the `create_source` tool which auto-transforms |
+| 400 "Unrecognized field customSql.query" | Used `query` inside `customSql` | Use `sql` instead of `query` |
+| 400 "Unknown data entity type: TABLE" | Used `type: "TABLE"` | Use `type: "SINGLE_COLLECTION"` with `singleCollection` config |
+| 400 "Unrecognized field storage.joinsInfo" | Placed `joinsInfo` inside `storage` | Move `joinsInfo` to the top level of the request body |
+| 400 "All fusion source data entities should contain unique id" | Multi-entity source missing entity `id` fields | Add a unique `id` to each entity in a fusion/join source |
+| 400 "Value should be valid custom ID format" | Used underscores or invalid chars in sourceId (via PUT) | Use POST via `create_source` to let Composer generate the ID |
+| 400 "Unrecognized field format" (custom metrics) | Included extra fields in custom metric body | Only include `label`, `expression`, and `dataType` |
+
 ## Important Notes
 
 - The user (Peter) works specifically with **Composer Discovery / VDD** (Visual Data Discovery). Do NOT reference Dundas BI managed layer concepts.
 - The API spec was truncated during fetch, so some endpoints may be missing dedicated tools. Use `composer_api_request` as a fallback.
 - Some endpoints are marked **(experimental)** or **(deprecated)** in their summaries — flag these to the user.
 - For PUT operations, you typically need to GET the resource first, modify the returned data, then PUT it back.
+- **Always use POST to create sources** — use `create_source` tool. Never use `update_sources` (PUT) for creation.
+- **Content-Type** for write operations is `application/vnd.composer.v3+json` — the server handles this automatically.

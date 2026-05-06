@@ -119,6 +119,108 @@ async def composer_api_request(
 
 
 # ---------------------------------------------------------------------------
+# Helper: transform entities shorthand to storage.dataEntities format
+# ---------------------------------------------------------------------------
+def _transform_entities_shorthand(body: dict) -> dict:
+    """If the body uses the simplified 'entities' format, transform it to the
+    full 'storage.dataEntities' format that the REST API expects.
+    The 'entities' shorthand is used by Composer's UI/docs but does NOT work
+    when calling the REST API directly — it causes HTTP 500."""
+    if "entities" in body and "storage" not in body:
+        entities = body.pop("entities")
+        data_entities = []
+        for entity in entities:
+            # Determine entity type from the fields present
+            if "customSql" in entity or "sql" in entity:
+                sql_value = entity.get("customSql", {})
+                if isinstance(sql_value, str):
+                    sql_value = {"connectionId": entity.get("connectionId", ""), "sql": sql_value}
+                elif "sql" not in sql_value and "query" in sql_value:
+                    # Fix common mistake: 'query' should be 'sql'
+                    sql_value["sql"] = sql_value.pop("query")
+                if "connectionId" in entity and "connectionId" not in sql_value:
+                    sql_value["connectionId"] = entity["connectionId"]
+                data_entities.append({
+                    "name": entity.get("name", "entity"),
+                    "type": "CUSTOM_SQL",
+                    "customSql": sql_value,
+                    **({"id": entity["id"]} if "id" in entity else {}),
+                })
+            else:
+                # SINGLE_COLLECTION type
+                data_entities.append({
+                    "name": entity.get("name", "entity"),
+                    "type": "SINGLE_COLLECTION",
+                    "singleCollection": {
+                        "connectionId": entity.get("connectionId", ""),
+                        "schema": entity.get("schema", ""),
+                        "collection": entity.get("collection", ""),
+                        "parameters": entity.get("parameters", {}),
+                    },
+                    **({"id": entity["id"]} if "id" in entity else {}),
+                })
+        body["storage"] = {"dataEntities": data_entities}
+    return body
+
+
+# ---------------------------------------------------------------------------
+# Source creation tool (POST /api/sources — not in the auto-generated spec)
+# ---------------------------------------------------------------------------
+@mcp.tool()
+async def create_source(
+    body: dict,
+) -> str:
+    """
+    Create a new Composer data source. Uses POST so Composer generates the
+    source ID automatically (hex format). Do NOT use update_sources (PUT) for
+    creation — that forces a custom ID which causes problems.
+
+    Accepts both the full storage.dataEntities format and the simplified
+    entities shorthand (which is auto-transformed).
+
+    Args:
+        body: Source definition. Must include 'name' and either:
+              - 'storage.dataEntities' (full format) with entity type and config
+              - 'entities' (shorthand) which will be auto-transformed
+
+    Example (custom SQL):
+        body={
+            "name": "My Source",
+            "storage": {
+                "dataEntities": [{
+                    "name": "my_entity",
+                    "type": "CUSTOM_SQL",
+                    "customSql": {
+                        "connectionId": "abc123",
+                        "sql": "SELECT * FROM schema.my_table"
+                    }
+                }]
+            }
+        }
+
+    Example (table join):
+        body={
+            "name": "My Joined Source",
+            "storage": {
+                "dataEntities": [
+                    {"id": "fact", "name": "fact_table", "type": "SINGLE_COLLECTION",
+                     "singleCollection": {"connectionId": "abc", "schema": "public",
+                                          "collection": "fact_table", "parameters": {}}},
+                    {"id": "dim", "name": "dim_table", "type": "SINGLE_COLLECTION",
+                     "singleCollection": {"connectionId": "abc", "schema": "public",
+                                          "collection": "dim_table", "parameters": {}}}
+                ]
+            },
+            "joinsInfo": [{"leftEntityName": "fact_table", "rightEntityName": "dim_table",
+                           "type": "INNER",
+                           "conditions": [{"leftFieldName": "id", "rightFieldName": "fact_id"}]}]
+        }
+    """
+    transformed = _transform_entities_shorthand(body.copy())
+    return await _call_api("POST", "/api/sources", {}, None, transformed)
+
+
+# ---------------------------------------------------------------------------
 # Auto-generated endpoint tools
 # ---------------------------------------------------------------------------
 

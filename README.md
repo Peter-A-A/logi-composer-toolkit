@@ -7,6 +7,8 @@ Reference documentation, MCP server, and examples for working with Logi Composer
 ### Documentation (`docs/`)
 - **Embedding Reference** — comprehensive guide to embedding dashboards and visuals using `initComposerEmbedManager`, Trusted Access, filtering, pub/sub, data queries, and more
 - **REST API Reference** — structured reference for all 175 API endpoints, organized by category
+- **Custom Metrics Guide** — how to create calculated fields on data sources via the API, including expression syntax, naming conventions, and worked examples
+- **Data Sources Guide** — how to create data sources via the API, including custom SQL, multi-table joins, global settings, and a complete error reference
 - **OpenAPI Spec** — raw OpenAPI 3.1.0 JSON specification
 
 ### MCP Server (`mcp-server/`)
@@ -35,5 +37,7 @@ The `CLAUDE.md` file at the root acts as an index — it tells Claude what's in 
 | Embed a dashboard | `docs/Logi-Composer-Symphony-Embedding-Reference.md` |
 | See a working embed example | `examples/composer-dashboard-embed.html` |
 | Look up an API endpoint | `docs/Logi Composer REST API Reference.md` |
+| Create a data source | `docs/Composer-Data-Sources-Guide.md` |
+| Create a custom metric | `docs/Composer-Custom-Metrics-Guide.md` |
 | Set up the MCP server | `mcp-server/USER_GUIDE.md` |
 | Understand the MCP server code | `mcp-server/README.md` |
