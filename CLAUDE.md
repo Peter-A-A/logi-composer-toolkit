@@ -19,7 +19,11 @@ logi-composer-toolkit/
 │   ├── Composer-Data-Sources-Guide.md                  ← Data source creation guide (SQL, table joins, global settings)
 │   ├── Composer-Visual-Types-Guide.md                  ← Visual/chart creation guide (bars, pie, KPI, table, pivot, etc.)
 │   ├── Composer-Dashboards-Guide.md                    ← Dashboard creation guide (layout, cross-filtering, drill-through)
+│   ├── Composer-Themes-Guide.md                        ← Theme/styling guide (tokens, customProperties, API)
 │   └── logi_composer_api_spec_raw.json                 ← Raw OpenAPI 3.1 spec (JSON)
+├── themes/
+│   ├── theme-template.json                             ← Annotated template with BRAND_* placeholders
+│   └── tetra-pak-theme.json                            ← Complete deployed example (Tetra Pak brand)
 ├── examples/
 │   └── composer-dashboard-embed.html                   ← Working dashboard embed example
 └── mcp-server/
@@ -39,13 +43,13 @@ Read `docs/Logi-Composer-Symphony-Embedding-Reference.md`. This is the primary r
 - Trusted Access authentication
 - Embedding dashboards, visuals, and components
 - Passing filter parameters (initial filters)
-- Cross-visual filtering (pub/sub)
-- Event listeners and context menus
+- Host-to-dashboard filtering via WebSocket injection (Section 9) — the only approach that works
+- Context menus with custom actions, including fetching full chart data via WebSocket (Section 10)
 - Data query objects (ZoomdataSDK)
 - Custom chart controller API
 - Action templates and keysets
 
-For a working code example, see `examples/composer-dashboard-embed.html`.
+For a working code example, see `examples/opc-revenue-dashboard-embed.html`.
 
 ### "How do I create a data source?"
 Read `docs/Composer-Data-Sources-Guide.md`. This covers:
@@ -82,6 +86,30 @@ Read `docs/Composer-Custom-Metrics-Guide.md`. This covers:
 - Common business metric patterns (ratios, filtered aggregations, period-over-period)
 - Step-by-step MCP workflow (find source → check fields → create metric → verify)
 - Naming conventions and important gotchas (minimal body fields, field names vs labels)
+
+### "How do I create or apply a theme?"
+Read `docs/Composer-Themes-Guide.md`. This covers:
+- The theme JSON structure: `variables` (design tokens) and `customProperties` (UI component overrides)
+- All color tokens and their purpose (primary, secondary, surface, background, intent states, etc.)
+- Font, palette, spacing, and radius configuration
+- All `customProperties` sections (navbar, dashboard, widget, charts, buttons, inputs, tables, etc.)
+- API endpoints: `POST /api/customization/themes` (create), `PUT /api/customization/themes/{id}` (update), `GET /api/customization/themes` (list)
+- Applying a theme to an embedded dashboard via `&theme={themeId}` URL parameter
+- Design guidelines (widget gaps, border radius, chart palettes, danger/success colors)
+
+**Workflow for creating a brand theme:**
+1. Start from `themes/theme-template.json` — it has annotated `BRAND_*` placeholders
+2. Replace all `BRAND_*` values with the customer's brand colors (derive from brand guidelines or a provided color palette)
+3. For `customProperties`, copy the complete set from `themes/tetra-pak-theme.json` (it has every section) and adapt literal color values — token references (`$colors.*`) carry over automatically
+4. Generate `DefaultSequential` palette as a gradient from brand primary → lightest tint (2-9 series)
+5. POST via `create_customization_themes` MCP tool or `composer_api_request(method="POST", path="/api/customization/themes", body={...})`
+6. Apply to an embed via URL parameter `&theme={themeId}` or set as default in the Composer admin UI
+
+**Key rules:**
+- For most themes, only `variables.colors` and `variables.palettes` need brand-specific values — `customProperties` token references (`$colors.*`) inherit automatically
+- Only override `customProperties` with literal colors when a specific UI element must deviate from the token system
+- Widget gaps: use `8px` or less (values above `8px` cause visual asymmetry)
+- Keep success (#0F8B5A) and warning (#D97B1A) colors unless brand guidelines specify alternatives
 
 ### "What REST API endpoints are available?"
 Read `docs/Logi Composer REST API Reference.md` for a structured list of all 175 endpoints organized by category (sources, dashboards, visuals, connections, users, permissions, etc.).

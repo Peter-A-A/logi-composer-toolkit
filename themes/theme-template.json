@@ -1,0 +1,205 @@
+{
+  "_instructions": "TEMPLATE: Replace all values marked BRAND_* with the customer's brand colors. Then POST to /api/customization/themes. Token references ($colors.*) should generally stay as-is — only override with literal colors when a specific element needs to deviate from the token system.",
+  "name": "BRAND_NAME-theme",
+  "content": {
+    "variables": {
+      "colors": {
+        "_comment_core": "Core surface/text colors — derive from brand's darkest and lightest colors",
+        "primary": "BRAND_DARKEST (navbar bg, dark surfaces — e.g. #0D1B2A)",
+        "primaryVariant": "BRAND_DARK_VARIANT (tooltip bg, secondary dark — slightly lighter than primary)",
+        "secondary": "BRAND_ACCENT (tab borders, waterfall totals — often brand's secondary color)",
+        "brandColor": "BRAND_PRIMARY (about page bg, home banner — the main brand color)",
+        "surface": "#fff",
+        "background": "BRAND_LIGHT_BG (page bg — very light tint of brand, e.g. #F5F7FA)",
+        "backgroundVariant": "BRAND_LIGHT_BG_ALT (footer bg, gutters — slightly darker than background)",
+        "border": "BRAND_BORDER (all borders — medium-light grey with brand tint)",
+        "text": "BRAND_BODY_TEXT (primary body text — medium grey, e.g. #4A5568)",
+        "muted": "BRAND_MUTED (secondary/placeholder text — lighter than text)",
+        "onPrimary": "#fff",
+        "onSurface": "BRAND_DARKEST (text on white surfaces)",
+        "onBackground": "BRAND_DARKEST (text on light backgrounds)",
+        "onBackgroundVariant": "BRAND_BODY_TEXT (text on variant backgrounds)",
+        "message": "BRAND_DARKEST (message/alert body text)",
+
+        "_comment_accent": "Accent and link colors",
+        "accentColor": "rgba(BRAND_PRIMARY_RGB, 0.4)",
+        "linkColor": "BRAND_PRIMARY",
+
+        "_comment_intent_primary": "Primary intent — the main brand action color",
+        "intentPrimary": "BRAND_PRIMARY",
+        "intentPrimaryHover": "BRAND_PRIMARY_DARK",
+        "intentPrimaryActive": "BRAND_PRIMARY_DARKER",
+        "intentPrimaryDisabled": "rgba(BRAND_PRIMARY_RGB, 0.4)",
+        "intentPrimaryBackground": "rgba(BRAND_PRIMARY_RGB, 0.10)",
+
+        "_comment_intent_success": "Success intent — green tones",
+        "intentSuccess": "#0F8B5A",
+        "intentSuccessHover": "#12A46A",
+        "intentSuccessActive": "#0A6E47",
+        "intentSuccessDisabled": "rgba(15,139,90,0.5)",
+        "intentSuccessBackground": "rgba(15,139,90,0.12)",
+
+        "_comment_intent_warning": "Warning intent — amber/orange tones",
+        "intentWarning": "#D97B1A",
+        "intentWarningHover": "#E89535",
+        "intentWarningActive": "#B86714",
+        "intentWarningDisabled": "rgba(217,123,26,0.5)",
+        "intentWarningBackground": "rgba(217,123,26,0.15)",
+        "intentWarningBorder": "#F2994A",
+
+        "_comment_intent_danger": "Danger intent — red tones (use brand red if available)",
+        "intentDanger": "BRAND_DANGER_RED (e.g. #EB2C33)",
+        "intentDangerHover": "BRAND_DANGER_LIGHT",
+        "intentDangerActive": "BRAND_DANGER_DARK",
+        "intentDangerDisabled": "rgba(BRAND_DANGER_RGB, 0.5)",
+        "intentDangerBackground": "rgba(BRAND_DANGER_RGB, 0.12)",
+        "intentDangerBorder": "BRAND_DANGER_RED",
+
+        "_comment_intent_base": "Base intent — neutral button/input states",
+        "intentBase": "BRAND_LIGHT_BG (same as background)",
+        "intentBaseHover": "BRAND_LIGHT_BG_ALT_LIGHT (very subtle hover)",
+        "intentBaseActive": "BRAND_BORDER_LIGHT (visible active state)",
+        "intentBaseDisabled": "BRAND_LIGHT_BG_ALT (same as backgroundVariant)",
+
+        "_comment_intent_minimal": "Minimal intent — icons, subtle interactions",
+        "intentMinimal": "BRAND_BODY_TEXT (icon default color)",
+        "intentMinimalHover": "rgba(BRAND_PRIMARY_RGB, 0.08)",
+        "intentMinimalActive": "rgba(BRAND_PRIMARY_RGB, 0.2)",
+        "intentMinimalDisabled": "rgba(BRAND_MUTED_RGB, 0.5)",
+
+        "_comment_info": "Info intent",
+        "intentInfoBackground": "BRAND_INFO_BG (light blue tint)",
+        "intentInfoBorder": "BRAND_PRIMARY"
+      },
+      "fonts": {
+        "body": "BRAND_FONT_STACK (e.g. '\"Helvetica Neue\", Helvetica, Arial, system-ui, sans-serif')",
+        "heading": "BRAND_FONT_STACK",
+        "monospace": "Monaco, Menlo, \"Ubuntu Mono\", Consolas, source-code-pro, monospace"
+      },
+      "fontSizes": [12, 14, 16, 18, 24, 32, 40, 48, 64],
+      "fontWeights": {
+        "lightest": 300,
+        "normal": 400,
+        "heading": 500,
+        "bold": 700
+      },
+      "palettes": {
+        "DefaultSequential": {
+          "_comment": "Generate a gradient from BRAND_PRIMARY to BRAND_PRIMARY_LIGHTEST for 2-9 series",
+          "2": ["BRAND_PRIMARY", "BRAND_PRIMARY_LIGHTEST"],
+          "3": ["BRAND_PRIMARY", "BRAND_PRIMARY_MID", "BRAND_PRIMARY_LIGHTEST"],
+          "4": ["BRAND_PRIMARY", "BRAND_PRIMARY_MID_DARK", "BRAND_PRIMARY_MID_LIGHT", "BRAND_PRIMARY_LIGHTEST"],
+          "5": ["BRAND_PRIMARY", "STEP1", "STEP2", "STEP3", "BRAND_PRIMARY_LIGHTEST"],
+          "6": ["BRAND_PRIMARY", "STEP1", "STEP2", "STEP3", "STEP4", "BRAND_PRIMARY_LIGHTEST"],
+          "7": ["BRAND_PRIMARY", "STEP1", "STEP2", "STEP3", "STEP4", "STEP5", "BRAND_PRIMARY_LIGHTEST"],
+          "8": ["BRAND_PRIMARY", "STEP1", "STEP2", "STEP3", "STEP4", "STEP5", "STEP6", "BRAND_PRIMARY_LIGHTEST"],
+          "9": ["BRAND_PRIMARY", "STEP1", "STEP2", "STEP3", "STEP4", "STEP5", "STEP6", "STEP7", "BRAND_PRIMARY_LIGHTEST"]
+        }
+      },
+      "radii": {
+        "none": 0,
+        "sm": 2,
+        "default": 4,
+        "lg": 6,
+        "pill": 600
+      },
+      "space": [0, 4, 8, 16, 32, 64, 128, 256, 512],
+      "breakpoints": ["320px", "568px", "768px", "1024px", "1200px"],
+      "lineHeights": { "body": 1.25, "heading": 1.125 },
+      "iconSet": "platform",
+      "links": { "primary": { "color": "intentPrimary" } },
+      "sizes": { "sm": 288, "md": 532, "lg": 736, "xl": 960, "xxl": 1136 }
+    },
+    "customProperties": {
+      "_comment": "The customProperties below use $colors.tokenName references. For most brand themes, these do NOT need to change. Only override specific values with literal hex/rgba when a UI element needs to deviate from the token system. The full set of customProperties sections is documented in logi-composer-theme-guide.md.",
+
+      "navbar": {
+        "background": "$colors.primary",
+        "colorInactive": "$colors.muted",
+        "menu": {
+          "background": "$colors.primary",
+          "color": "$colors.onPrimary",
+          "divider": "rgba(255, 255, 255, 0.12)",
+          "itemActive": "$colors.intentPrimary",
+          "itemHover": "$colors.intentMinimalHover"
+        },
+        "tabActive": "rgba(BRAND_PRIMARY_RGB, 0.3)",
+        "tabBorderActive": "$colors.secondary",
+        "tabFontActive": "$colors.onPrimary",
+        "tabHover": "rgba(BRAND_PRIMARY_RGB, 0.15)"
+      },
+
+      "dashboard": {
+        "background": "$colors.background",
+        "header": {
+          "background": "$colors.surface",
+          "controls": {
+            "filterActiveIcon": "#0F8B5A",
+            "filterActiveIconHover": "#0A6E47",
+            "filterIcon": "BRAND_MUTED",
+            "filterIconHover": "BRAND_BODY_TEXT"
+          },
+          "text": "$colors.onSurface",
+          "unsavedText": "$colors.muted"
+        },
+        "layout": {
+          "widgetGaps": "8px"
+        },
+        "wrapperBackground": "$colors.background"
+      },
+
+      "widget": {
+        "background": "$colors.surface",
+        "borderColor": "BRAND_BORDER_LIGHT",
+        "borderRadius": "4px",
+        "titleColor": "$colors.text",
+        "icon": {
+          "accentColor": "$colors.intentSuccess",
+          "badgeBgColor": "$colors.intentSuccess",
+          "badgeColor": "$colors.onPrimary",
+          "badgeWarningColor": "$colors.intentWarning",
+          "color": "$colors.intentMinimal",
+          "disabledColor": "$colors.muted"
+        },
+        "label": {
+          "background": "$colors.background",
+          "color": "BRAND_DARKEST",
+          "hover": { "background": "BRAND_BORDER_LIGHT" },
+          "warningBorderColor": "$colors.intentWarning"
+        },
+        "progressBar": { "bg": "$colors.accentColor" },
+        "selected": { "borderColor": "$colors.accentColor" },
+        "statusLabel": { "bg": "rgba(BRAND_INFO_BG_RGB, 0.85)", "color": "BRAND_BODY_TEXT" },
+        "tooltip": {
+          "bgColor": "$colors.surface",
+          "borderColor": "$colors.border",
+          "color": "$colors.text",
+          "secondaryColor": "$colors.muted"
+        }
+      },
+
+      "charts": {
+        "base": {
+          "axisLabelColor": "$colors.text",
+          "axisLabelShadow": "rgba(255, 255, 255, 0.0)",
+          "axisLineColor": "BRAND_BORDER",
+          "backgroundColor": "$colors.surface",
+          "color": "$colors.text",
+          "palette": "DefaultSequential",
+          "pointerColor": "$colors.text",
+          "splitLineColor": "$colors.border"
+        },
+        "KPI": {
+          "Background Color": "#ffffff",
+          "Comparison Data Color": "BRAND_MUTED",
+          "Down Arrow Color": "BRAND_DANGER_RED",
+          "Label Color": "BRAND_BODY_TEXT",
+          "Metric Color": "BRAND_DARKEST",
+          "Up Arrow Color": "#0F8B5A"
+        }
+      },
+
+      "_remaining_sections": "Copy the full customProperties from the Tetra Pak example theme (tetra-pak-logi-composer-theme.json) and adapt the literal color values. Token references ($colors.*) carry over automatically."
+    }
+  }
+}

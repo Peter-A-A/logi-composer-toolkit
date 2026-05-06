@@ -883,12 +883,16 @@ When a custom action is triggered, the callback receives a `data` object:
 {
   data: {
     group: ["value1", "value2"],   // Dimension values at clicked point
-    metric: { metricName: 123 }    // Metric values at clicked point
+    current: { metricName: 123 }   // Metric values at clicked point (use .current not .metric)
   },
   visualization: { /* visual info */ },
   widget: { /* widget info */ }
 }
 ```
+
+**Key fields on `data.data`:**
+- `group` — array of dimension/group-by values for the clicked data point (e.g., `["Electronics"]`)
+- `current` — object with metric name→value pairs for the clicked point (e.g., `{ "SUM(total_revenue_eur)": 12345.67 }`)
 
 ### 10.3 Context Menu Example — Google Search
 
@@ -923,6 +927,137 @@ const dashboard = await em.createComponent('dashboard', {
   }
 });
 ```
+
+### 10.4 Fetching Full Chart Data from a Context Menu Action
+
+The context menu callback only provides the **clicked data point**. To fetch ALL data from the chart (all rows, all metrics), use the captured WebSocket to send a `START_VIS` query matching the visual's dimensions and metrics.
+
+**Pattern:**
+1. Define a `fetchVisualData(contextData)` function that builds and sends a `START_VIS` query via the captured embed WebSocket
+2. Add a custom action to `menuEventsConfig` that calls it
+3. The function listens for the response, extracts all rows, and logs/processes them
+
+**Implementation:**
+
+```javascript
+// ── Define the fetch function (requires embedWebSocket to be captured) ──
+function fetchVisualData(contextData, sourceId, dimensions, metrics) {
+  if (!embedWebSocket || embedWebSocket.readyState !== WebSocket.OPEN) {
+    console.warn('[Chart Data] WebSocket not available');
+    return;
+  }
+
+  // Log the clicked point from the callback
+  const point = contextData.data;
+  console.log('[Chart Data] Clicked point — groups:', point.group, 'metrics:', point.current);
+
+  // Build a query for the full dataset
+  const cid = 'chartdata_' + Date.now();
+
+  function handler(e) {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.cid === cid) {
+        if (msg.data) {
+          embedWebSocket.removeEventListener('message', handler);
+          console.log('[Chart Data] Full dataset (' + msg.data.length + ' rows):');
+          // Log as table for readability
+          console.table(msg.data.map(row => {
+            const obj = {};
+            if (row.group) row.group.forEach((g, i) => obj['group_' + i] = g);
+            if (row.current) Object.assign(obj, row.current);
+            return obj;
+          }));
+        } else if (msg.error) {
+          embedWebSocket.removeEventListener('message', handler);
+          console.error('[Chart Data] Query error:', msg.error);
+        }
+        // Otherwise keep listening — data message hasn't arrived yet
+      }
+    } catch(ex) { /* ignore */ }
+  }
+
+  embedWebSocket.addEventListener('message', handler);
+
+  // dimensions = [{ name: 'category' }]
+  // metrics = [{ name: 'total_revenue_eur', function: 'SUM' }, ...]
+  const queryMsg = {
+    type: 'START_VIS',
+    cid: cid,
+    cachePolicy: 'UPDATE',
+    player: null,
+    metrics: metrics.map(m => ({
+      type: 'FIELD',
+      field: { name: m.name },
+      function: m.function || 'SUM'
+    })),
+    time: { from: '+$start_of_data', to: '+$end_of_data', timeField: 'dt' },
+    dimensions: [{
+      aggregations: dimensions.map(d => ({
+        type: 'TERMS',
+        field: { name: d.name }
+      })),
+      window: {
+        type: 'COMPOSITE',
+        aggregationWindows: [{
+          limit: 50,
+          sort: {
+            type: 'METRIC', direction: 'DESC',
+            metric: {
+              type: 'FIELD',
+              field: { name: metrics[0].name },
+              function: metrics[0].function || 'SUM'
+            }
+          }
+        }]
+      }
+    }],
+    sourceId: sourceId,
+    filters: typeof activeFilters !== 'undefined' ? activeFilters : [],
+    aggregateFilters: [],
+    textSearchEnabled: false
+  };
+
+  embedWebSocket.send(JSON.stringify(queryMsg));
+
+  setTimeout(() => {
+    embedWebSocket.removeEventListener('message', handler);
+  }, 10000);
+}
+```
+
+**Register it as a context menu action:**
+
+```javascript
+menuEventsConfig: {
+  click: 'openMenu',
+  customActions: [
+    {
+      name: 'Log Chart Data',
+      action: (data) => {
+        fetchVisualData(
+          data,
+          'your-source-id',
+          [{ name: 'category' }],                    // dimensions to group by
+          [                                           // metrics to fetch
+            { name: 'total_revenue_eur', function: 'SUM' },
+            { name: 'ad_spend_eur', function: 'SUM' },
+            { name: 'total_orders', function: 'SUM' }
+          ]
+        );
+      }
+    }
+  ]
+}
+```
+
+**Key points:**
+- The `cid` prefix `'chartdata_'` is NOT `'filter_'`, so the WS filter interceptor (Section 9) will inject any active host filters — meaning the fetched data respects external filter selections.
+- The query uses the same `time`, `sourceId`, and `dimensions` structure as the dashboard's own `START_VIS` queries.
+- The server responds with ~6 messages per query; the handler only acts when `msg.data` is present (the actual data payload).
+- The response `msg.data` is an array of rows, each with `group` (dimension values) and `current` (metric values as `{ "AGG(field)": number }`).
+
+See `examples/opc-revenue-dashboard-embed.html` for a complete working implementation.
 
 ---
 

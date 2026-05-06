@@ -471,6 +471,101 @@
       });
     }
 
+    // ── Fetch all data from a visual via WebSocket ──
+    // Called from the "Log Chart Data" context menu action.
+    // Intercepts the WS response stream to capture the visual's full dataset.
+    function fetchVisualData(contextData) {
+      if (!embedWebSocket || embedWebSocket.readyState !== WebSocket.OPEN) {
+        console.warn('[Chart Data] WebSocket not available');
+        return;
+      }
+
+      // The context menu callback provides the clicked data point.
+      // To get ALL data, we listen for the next START_VIS response from the
+      // same visual. We trigger a refresh on just that visual by using the
+      // visual's own query pattern.
+      // First, log what we got from the callback itself:
+      const point = contextData.data;
+      console.log('[Chart Data] ── Clicked Data Point ──');
+      console.log('[Chart Data]   Groups:', point.group);
+      console.log('[Chart Data]   Current metrics:', point.current);
+
+      // Now query the full dataset for this source.
+      // We build a query that fetches the same dimension with all numeric metrics.
+      const cid = 'chartdata_' + Date.now();
+
+      function handler(e) {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.cid === cid) {
+            if (msg.data) {
+              embedWebSocket.removeEventListener('message', handler);
+              console.log('[Chart Data] ── Full Visual Dataset ──');
+              console.log('[Chart Data]   Row count:', msg.data.length);
+              msg.data.forEach((row, i) => {
+                const dims = row.group ? row.group.join(' | ') : '(no group)';
+                const metrics = row.current || {};
+                console.log(`[Chart Data]   [${i}] ${dims}`, metrics);
+              });
+              console.table(msg.data.map(row => {
+                const obj = {};
+                if (row.group) row.group.forEach((g, gi) => obj['group_' + gi] = g);
+                if (row.current) Object.assign(obj, row.current);
+                return obj;
+              }));
+            } else if (msg.error) {
+              embedWebSocket.removeEventListener('message', handler);
+              console.error('[Chart Data] Query error:', msg.error);
+            }
+          }
+        } catch(ex) { /* ignore */ }
+      }
+
+      embedWebSocket.addEventListener('message', handler);
+
+      // Build a query matching the bar chart's structure:
+      // dimension = category, metric = SUM(total_revenue_eur)
+      const queryMsg = {
+        type: 'START_VIS',
+        cid: cid,
+        cachePolicy: 'UPDATE',
+        player: null,
+        metrics: [
+          { type: 'FIELD', field: { name: 'total_revenue_eur' }, function: 'SUM' },
+          { type: 'FIELD', field: { name: 'ad_spend_eur' }, function: 'SUM' },
+          { type: 'FIELD', field: { name: 'total_orders' }, function: 'SUM' },
+          { type: 'FIELD', field: { name: 'ad_orders' }, function: 'SUM' },
+          { type: 'FIELD', field: { name: 'impressions' }, function: 'SUM' },
+          { type: 'FIELD', field: { name: 'clicks' }, function: 'SUM' }
+        ],
+        time: { from: '+$start_of_data', to: '+$end_of_data', timeField: 'dt' },
+        dimensions: [{
+          aggregations: [{ type: 'TERMS', field: { name: 'category' } }],
+          window: {
+            type: 'COMPOSITE',
+            aggregationWindows: [{
+              limit: 50,
+              sort: {
+                type: 'METRIC', direction: 'DESC',
+                metric: { type: 'FIELD', field: { name: 'total_revenue_eur' }, function: 'SUM' }
+              }
+            }]
+          }
+        }],
+        sourceId: SOURCE_ID,
+        filters: activeFilters.length > 0 ? activeFilters : [],
+        aggregateFilters: [],
+        textSearchEnabled: false
+      };
+
+      embedWebSocket.send(JSON.stringify(queryMsg));
+      console.log('[Chart Data] Querying full dataset via WebSocket...');
+
+      setTimeout(() => {
+        embedWebSocket.removeEventListener('message', handler);
+      }, 10000);
+    }
+
     // ── Auth: Managed API LogOn → DataDiscoveryToken ──
     async function getDiscoveryToken() {
       // Step 1: LogOn
@@ -611,6 +706,15 @@
                       '_blank'
                     ).focus();
                   }
+                }
+              },
+              {
+                name: 'Log Chart Data',
+                action: (data) => {
+                  console.log('[Context Menu] Full callback object:', data);
+                  console.log('[Context Menu] Clicked point — groups:', data.data.group, 'metrics:', data.data.current);
+                  // Fetch all visible data from this visual via WebSocket
+                  fetchVisualData(data);
                 }
               }
             ]
