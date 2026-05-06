@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OPC — Total Revenue by Category</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #1a1a2e;
+      --text-muted: #6c757d;
+      --accent: #0a2f5c;
+      --accent-hover: #071e3d;
+      --border: #dee2e6;
+      --error: #dc3545;
+      --success: #28a745;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Login Form ── */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #login-overlay.hidden { display: none; }
+
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    .login-card h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .login-card p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus { border-color: var(--accent); }
+
+    .form-row { display: flex; gap: 1rem; }
+    .form-row .form-group { flex: 1; }
+
+    #login-btn {
+      width: 100%;
+      padding: 0.65rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    #login-btn:hover { background: var(--accent-hover); }
+    #login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #login-error {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      display: none;
+    }
+
+    /* ── Dashboard Container ── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #toolbar .title { font-weight: 600; font-size: 0.95rem; }
+    #toolbar .status { font-size: 0.8rem; color: var(--text-muted); }
+    #toolbar .status.connected { color: var(--success); }
+
+    #toolbar button {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    #toolbar button:hover { background: var(--bg); }
+
+    /* ── Filter Bar ── */
+    #filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    #filter-bar label {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .filter-dropdown {
+      position: relative;
+    }
+
+    .filter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+      min-width: 160px;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .filter-toggle:hover { border-color: var(--accent); }
+
+    .filter-toggle .arrow {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+
+    .filter-dropdown.open .filter-toggle .arrow { transform: rotate(180deg); }
+
+    .filter-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 200px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      z-index: 100;
+      padding: 0.4rem 0;
+    }
+
+    .filter-dropdown.open .filter-menu { display: block; }
+
+    .filter-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .filter-option:hover { background: var(--bg); }
+
+    .filter-option input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .filter-option span {
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .filter-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0.3rem 0;
+    }
+
+    .filter-count {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      padding: 0 0.4rem;
+    }
+
+    #filter-apply {
+      padding: 0.35rem 0.9rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    #filter-apply:hover { background: var(--accent-hover); }
+
+    #filter-reset {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    #filter-reset:hover { background: var(--bg); color: var(--text); }
+
+    #dashboard-container {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- ── Login Overlay ── -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <h1>OPC Revenue Dashboard</h1>
+      <p class="subtitle">Total Revenue by Category — embedded from Logi Composer</p>
+
+      <div class="form-group">
+        <label for="server-url">Server URL</label>
+        <input type="text" id="server-url" value="https://uat.logi-symphony.com" placeholder="https://your-server.com">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" value="" placeholder="Username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" value="" placeholder="Password">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="effective-account">Effective Account (optional)</label>
+        <input type="text" id="effective-account" value="" placeholder="e.g. Common Admin">
+      </div>
+
+      <p class="subtitle" style="margin-top:0.5rem; font-size:0.8rem;">Serve this file from a local web server, e.g. <code>python3 -m http.server 9090</code></p>
+
+      <button id="login-btn" onclick="connectAndEmbed()">Connect & Embed</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- ── Toolbar + Filter Bar + Dashboard ── -->
+  <div id="app-wrapper" style="display:none; flex-direction:column; height:100vh; overflow:hidden;">
+    <div id="toolbar">
+      <span class="title" id="toolbar-title">OPC — Total Revenue by Category</span>
+      <span class="status connected" id="toolbar-status">Connected</span>
+      <button onclick="location.reload()">Disconnect</button>
+    </div>
+
+    <div id="filter-bar">
+      <label>Filter by:</label>
+      <div class="filter-dropdown" id="category-filter">
+        <div class="filter-toggle" onclick="toggleFilterMenu('category-filter')">
+          <span id="category-filter-label">All Categories</span>
+          <span class="arrow">&#9660;</span>
+        </div>
+        <div class="filter-menu" id="category-filter-menu">
+          <!-- Populated dynamically after dashboard loads -->
+        </div>
+      </div>
+      <button id="filter-apply" onclick="applyCategoryFilter()">Apply</button>
+      <button id="filter-reset" onclick="resetFilters()">Reset</button>
+      <span class="filter-count" id="filter-status"></span>
+    </div>
+
+    <div id="dashboard-container" style="flex:1; min-height:0;">
+      <div class="spinner-wrap" id="loading-spinner">
+        <div class="spinner"></div>
+        <span style="color:var(--text-muted); font-size:0.9rem;">Loading dashboard...</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Dashboard ID (accountId_dashboardId format) ──
+    const DASHBOARD_ID = '65659d06b5ca0667ef2bb2d1_69faa7630b70396702eba048';
+    const SOURCE_ID = '69fa9cc50b70396702eb9f82';
+
+    // ── Config (populated from form) ──
+    let CONFIG = {};
+
+    // ── Dashboard & embed manager references (set after embed) ──
+    let dashboardComponent = null;
+    let embedManager = null;
+    let pubSubReady = null;
+
+    // ── Active filter state (set by Apply button, injected into WS queries) ──
+    let activeFilters = [];  // Array of TAttributeFilter objects to inject
+
+    // ── WebSocket interception: capture embed WS + inject filters ──
+    // The embed library uses WebSockets for all data queries. We intercept
+    // WebSocket.prototype.send to:
+    //   1. Capture a reference to the authenticated connection (for querying filter values)
+    //   2. Inject activeFilters into every START_VIS query (for applying external filters)
+    // Note: The REST endpoint /api/sources/{id}/fields/{name}/statistics/distinct-values
+    // exists but has CORS issues when called cross-origin from an embed page.
+    // WebSocket messages bypass CORS entirely once the connection is established.
+    let embedWebSocket = null;
+
+    const originalWsSend = WebSocket.prototype.send;
+    WebSocket.prototype.send = function(data) {
+      if (typeof data === 'string' && data.includes('START_VIS')) {
+        if (!embedWebSocket) {
+          embedWebSocket = this;
+          console.log('[WS] Captured embed WebSocket connection');
+        }
+        // Inject active filters into START_VIS queries
+        if (activeFilters.length > 0) {
+          try {
+            const msg = JSON.parse(data);
+            if (msg.type === 'START_VIS' && msg.sourceId === SOURCE_ID) {
+              // Don't inject into our own filter-value queries
+              if (!msg.cid || !msg.cid.startsWith('filter_')) {
+                msg.filters = (msg.filters || []).concat(activeFilters);
+                data = JSON.stringify(msg);
+                console.log('[WS] Injected filters into query:', msg.cid);
+              }
+            }
+          } catch(e) { /* pass through unmodified */ }
+        }
+      }
+      return originalWsSend.apply(this, arguments);
+    };
+
+    // ── Query distinct field values via the embed library's WebSocket ──
+    function queryFieldValues(fieldName, limit) {
+      limit = limit || 50;
+      return new Promise((resolve, reject) => {
+        if (!embedWebSocket || embedWebSocket.readyState !== WebSocket.OPEN) {
+          reject(new Error('Embed WebSocket not available'));
+          return;
+        }
+
+        const cid = 'filter_' + fieldName + '_' + Date.now();
+
+        function handler(e) {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg.cid === cid) {
+              // The server sends multiple messages per query (status, time range,
+              // activity, viewport, DATA, final status). Only act on data or error.
+              if (msg.data) {
+                const values = msg.data
+                  .map(row => row.group && row.group[0])
+                  .filter(val => val != null && val !== '');
+                embedWebSocket.removeEventListener('message', handler);
+                resolve(values);
+              } else if (msg.error) {
+                embedWebSocket.removeEventListener('message', handler);
+                reject(new Error(msg.error));
+              }
+              // Otherwise keep listening — the data message hasn't arrived yet
+            }
+          } catch (ex) { /* ignore parse errors from other messages */ }
+        }
+        embedWebSocket.addEventListener('message', handler);
+
+        const queryMsg = {
+          type: 'START_VIS',
+          cid: cid,
+          cachePolicy: 'UPDATE',
+          player: null,
+          metrics: [{ type: 'FIELD', field: { name: fieldName }, function: 'COUNT' }],
+          time: { from: '+$start_of_data', to: '+$end_of_data', timeField: 'dt' },
+          dimensions: [{
+            aggregations: [{ type: 'TERMS', field: { name: fieldName } }],
+            window: {
+              type: 'COMPOSITE',
+              aggregationWindows: [{
+                limit: limit,
+                sort: { type: 'METRIC', direction: 'DESC',
+                  metric: { type: 'FIELD', field: { name: fieldName }, function: 'COUNT' }
+                }
+              }]
+            }
+          }],
+          sourceId: SOURCE_ID,
+          filters: [],
+          aggregateFilters: [],
+          textSearchEnabled: false
+        };
+        embedWebSocket.send(JSON.stringify(queryMsg));
+        console.log('[WS] Sent field values query for:', fieldName);
+
+        setTimeout(() => {
+          embedWebSocket.removeEventListener('message', handler);
+          reject(new Error('Query timeout'));
+        }, 10000);
+      });
+    }
+
+    // ── Auth: Managed API LogOn → DataDiscoveryToken ──
+    async function getDiscoveryToken() {
+      // Step 1: LogOn
+      const logonBody = {
+        accountName: CONFIG.username,
+        password: CONFIG.password,
+        isWindowsLogOn: false,
+        deleteOtherSessions: false,
+        performDataDiscoveryLogon: true
+      };
+
+      if (CONFIG.effectiveAccount) {
+        logonBody.effectiveAccountName = CONFIG.effectiveAccount;
+      }
+
+      const logonRes = await fetch(`${CONFIG.serverUrl}/managed/API/LogOn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logonBody)
+      });
+
+      if (!logonRes.ok) {
+        throw new Error(`LogOn failed: ${logonRes.status} ${logonRes.statusText}`);
+      }
+
+      const logonData = await logonRes.json();
+      const sessionId = logonData.sessionId;
+
+      if (!sessionId) {
+        throw new Error('LogOn succeeded but no sessionId returned');
+      }
+
+      console.log('[Auth] Got sessionId:', sessionId);
+
+      // Step 2: Get Data Discovery Token
+      const tokenRes = await fetch(`${CONFIG.serverUrl}/managed/API/Session/DataDiscoveryToken/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionId}`
+        }
+      });
+
+      if (!tokenRes.ok) {
+        throw new Error(`DataDiscoveryToken failed: ${tokenRes.status}`);
+      }
+
+      const discoveryToken = await tokenRes.json();
+      console.log('[Auth] Got discovery token');
+
+      return {
+        access_token: discoveryToken,
+        expires_in: 3600
+      };
+    }
+
+    // ── Token provider with caching ──
+    let cachedToken = null;
+    let tokenExpiry = 0;
+
+    async function getToken() {
+      const now = Date.now();
+      if (cachedToken && now < tokenExpiry - 60000) {
+        return cachedToken;
+      }
+      cachedToken = await getDiscoveryToken();
+      tokenExpiry = now + (cachedToken.expires_in * 1000);
+      return cachedToken;
+    }
+
+    // ── Main: Connect and embed ──
+    async function connectAndEmbed() {
+      const btn = document.getElementById('login-btn');
+      const errorEl = document.getElementById('login-error');
+
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      errorEl.style.display = 'none';
+
+      CONFIG = {
+        serverUrl: document.getElementById('server-url').value.replace(/\/+$/, ''),
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        effectiveAccount: document.getElementById('effective-account').value || ''
+      };
+
+      try {
+        // Test auth
+        await getToken();
+
+        // Load embed.js
+        await loadEmbedScript(CONFIG.serverUrl);
+
+        // Show dashboard, filter bar, and toolbar
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('app-wrapper').style.display = 'flex';
+
+        // Initialize embed manager (store at wider scope for pub/sub)
+        embedManager = await window.initComposerEmbedManager({
+          getToken: () => getToken()
+        });
+
+        // Create dashboard component
+        const dashboard = await embedManager.createComponent('dashboard', {
+          dashboardId: DASHBOARD_ID,
+          originId: DASHBOARD_ID,
+          theme: '__platform__',
+          interactivityProfileName: 'interactive',
+          header: {
+            visible: true,
+            showTitle: true,
+            showActions: false
+          },
+          editor: {
+            placement: 'modals'
+          },
+          interactivityOverrides: {
+            FILTER: true,
+            EXPORT: true,
+            MULTI_SELECTION: true,
+            DELETE: false,
+            SHARE: false,
+            PERMISSIONS: false,
+            ADD_NEW: false
+          },
+          menuEventsConfig: {
+            click: 'openMenu',
+            customActions: [
+              {
+                icon: {
+                  src: 'https://www.google.com/favicon.ico'
+                },
+                name: 'Search Google',
+                action: (data) => {
+                  const dimension = data.data.group ? data.data.group[0] : '';
+                  if (dimension) {
+                    window.open(
+                      'https://www.google.com/search?q=' + encodeURIComponent(dimension),
+                      '_blank'
+                    ).focus();
+                  }
+                }
+              }
+            ]
+          }
+        });
+
+        // Store reference for filter bar
+        dashboardComponent = dashboard;
+
+        // Remove spinner and render
+        document.getElementById('loading-spinner').remove();
+
+        dashboard.render(document.getElementById('dashboard-container'), {
+          width: '100%',
+          height: '100%'
+        });
+
+        // Wait for composer-dashboard-ready before using pub/sub
+        pubSubReady = new Promise((resolve) => {
+          const handler = () => {
+            resolve();
+            document.removeEventListener('composer-dashboard-ready', handler);
+          };
+          document.addEventListener('composer-dashboard-ready', handler);
+        });
+
+        // Event listeners
+        dashboard.addEventListener('composer-dashboard-loaded', () => {
+          document.getElementById('toolbar-status').textContent = 'Dashboard loaded';
+        });
+
+        // Once dashboard is ready, the WebSocket has been captured from the
+        // initial data load. Query field values for the filter dropdown.
+        pubSubReady.then(() => {
+          console.log('[PubSub] Dashboard ready, embed WS captured:', !!embedWebSocket);
+          // Small delay to ensure the WS is fully established
+          setTimeout(() => fetchCategoryValues(), 500);
+        });
+
+      } catch (err) {
+        console.error('[Error]', err);
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Connect & Embed';
+      }
+    }
+
+    // ── Load embed.js ──
+    function loadEmbedScript(serverUrl) {
+      return new Promise((resolve, reject) => {
+        if (window.initComposerEmbedManager) { resolve(); return; }
+
+        const script = document.createElement('script');
+        script.setAttribute('data-name', 'composer-embed-manager');
+        script.src = `${serverUrl}/discovery/embed/embed.js`;
+        script.onload = () => setTimeout(resolve, 200);
+        script.onerror = () => reject(new Error('Failed to load embed.js'));
+        document.head.appendChild(script);
+      });
+    }
+
+    // ── Filter: category values (populated via WebSocket query) ──
+    let categoryValues = [];
+    let categoryFilterPopulated = false;
+
+    async function fetchCategoryValues() {
+      if (categoryFilterPopulated) return;
+
+      try {
+        // Query distinct category values via WebSocket
+        categoryValues = await queryFieldValues('category');
+        console.log('[Filter] Got category values:', categoryValues);
+        populateCategoryMenu();
+      } catch (err) {
+        console.warn('[Filter] Failed to load category values:', err.message);
+        document.getElementById('filter-status').textContent =
+          'Could not load categories automatically. Type values below.';
+        addManualCategoryInput();
+      }
+    }
+
+    function populateCategoryMenu() {
+      const menu = document.getElementById('category-filter-menu');
+      menu.innerHTML = '';
+
+      // "Select All" option
+      const selectAll = document.createElement('div');
+      selectAll.className = 'filter-option';
+      selectAll.innerHTML = `
+        <input type="checkbox" id="cat-all" checked onchange="toggleAllCategories(this)">
+        <span style="font-weight:600;">Select All</span>
+      `;
+      menu.appendChild(selectAll);
+
+      // Divider
+      const divider = document.createElement('div');
+      divider.className = 'filter-divider';
+      menu.appendChild(divider);
+
+      // Individual category options
+      categoryValues.sort().forEach((val, i) => {
+        const opt = document.createElement('div');
+        opt.className = 'filter-option';
+        opt.innerHTML = `
+          <input type="checkbox" id="cat-${i}" value="${val}" checked onchange="updateFilterLabel()">
+          <span>${val}</span>
+        `;
+        menu.appendChild(opt);
+      });
+
+      categoryFilterPopulated = true;
+      document.getElementById('filter-status').textContent = '';
+    }
+
+    function addManualCategoryInput() {
+      const menu = document.getElementById('category-filter-menu');
+      menu.innerHTML = `
+        <div style="padding: 0.5rem 0.75rem;">
+          <input type="text" id="manual-category" placeholder="Type a category and press Enter"
+            style="width:100%; padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:4px; font-size:0.85rem;"
+            onkeydown="if(event.key==='Enter'){addManualCategory(this.value);this.value='';}">
+        </div>
+      `;
+    }
+
+    function addManualCategory(value) {
+      if (!value.trim()) return;
+      if (!categoryValues.includes(value.trim())) {
+        categoryValues.push(value.trim());
+        populateCategoryMenu();
+      }
+    }
+
+    // ── Filter: Toggle dropdown ──
+    function toggleFilterMenu(id) {
+      const dropdown = document.getElementById(id);
+      dropdown.classList.toggle('open');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.filter-dropdown.open').forEach(dd => {
+        if (!dd.contains(e.target)) dd.classList.remove('open');
+      });
+    });
+
+    // ── Filter: Select All toggle ──
+    function toggleAllCategories(selectAllCheckbox) {
+      const menu = document.getElementById('category-filter-menu');
+      const checkboxes = menu.querySelectorAll('input[type="checkbox"]:not(#cat-all)');
+      checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+      updateFilterLabel();
+    }
+
+    // ── Filter: Update label text without applying ──
+    function updateFilterLabel() {
+      const menu = document.getElementById('category-filter-menu');
+      const checkboxes = menu.querySelectorAll('input[type="checkbox"]:not(#cat-all)');
+      const selected = [];
+      let allChecked = true;
+      checkboxes.forEach(cb => {
+        if (cb.checked) selected.push(cb.value);
+        else allChecked = false;
+      });
+      const selectAll = document.getElementById('cat-all');
+      if (selectAll) selectAll.checked = allChecked;
+      const label = document.getElementById('category-filter-label');
+      if (allChecked || selected.length === 0) {
+        label.textContent = 'All Categories';
+      } else if (selected.length === 1) {
+        label.textContent = selected[0];
+      } else {
+        label.textContent = `${selected.length} selected`;
+      }
+    }
+
+    // ── Filter: Apply category filter via WebSocket injection ──
+    // Sets activeFilters and triggers dashboardComponent.refreshData().
+    // The WS interceptor injects the filter into every START_VIS query
+    // the dashboard sends during refresh.
+
+    function applyCategoryFilter() {
+      if (!dashboardComponent) {
+        console.warn('[Filter] Dashboard component not ready yet');
+        return;
+      }
+
+      const menu = document.getElementById('category-filter-menu');
+      const checkboxes = menu.querySelectorAll('input[type="checkbox"]:not(#cat-all)');
+      const selected = [];
+      let allChecked = true;
+
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          selected.push(cb.value);
+        } else {
+          allChecked = false;
+        }
+      });
+
+      // Update "Select All" checkbox
+      const selectAll = document.getElementById('cat-all');
+      if (selectAll) selectAll.checked = allChecked;
+
+      // Update label
+      const label = document.getElementById('category-filter-label');
+      if (allChecked || selected.length === 0) {
+        label.textContent = 'All Categories';
+      } else if (selected.length === 1) {
+        label.textContent = selected[0];
+      } else {
+        label.textContent = `${selected.length} selected`;
+      }
+
+      // Set the active filters for WS injection
+      if (allChecked) {
+        activeFilters = [];  // No filter = show all
+      } else {
+        activeFilters = [{
+          operation: 'IN',
+          path: { name: 'category' },
+          value: selected
+        }];
+      }
+
+      console.log('[Filter] Active filters set:', JSON.stringify(activeFilters));
+
+      // Trigger dashboard refresh — the WS interceptor will inject
+      // activeFilters into the START_VIS queries
+      dashboardComponent.refreshData();
+
+      // Update status
+      document.getElementById('filter-status').textContent =
+        allChecked ? '' : `Showing ${selected.length} of ${categoryValues.length}`;
+    }
+
+    // ── Filter: Reset all ──
+    function resetFilters() {
+      const menu = document.getElementById('category-filter-menu');
+      const checkboxes = menu.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(cb => cb.checked = true);
+      applyCategoryFilter();
+    }
+
+    // ── Enter key to submit ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !document.getElementById('login-overlay').classList.contains('hidden')) {
+        connectAndEmbed();
+      }
+    });
+  </script>
+</body>
+</html>

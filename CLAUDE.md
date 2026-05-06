@@ -132,10 +132,23 @@ The embed script path follows the same pattern:
 ## Creating new embedded content
 
 When asked to create embedded Composer content:
-1. Use `examples/composer-dashboard-embed.html` as a starting template
+1. Use `examples/opc-revenue-dashboard-embed.html` as the primary working template
 2. Refer to `docs/Logi-Composer-Symphony-Embedding-Reference.md` for API details
 3. Always use `initComposerEmbedManager` (not the legacy `initLogiEmbedManager`)
 4. Use Trusted Access for authentication in embedded contexts
+
+### Adding host-to-dashboard filters
+
+**CRITICAL:** The documented pub/sub APIs (`dashboard.trigger('EMBED/PUBLISH')`, `embedManager.publish()`, `initialFilters` with `forTopic`) do NOT push filters into embedded dashboard visuals. These were tested extensively and confirmed non-functional for host→dashboard filtering.
+
+**The working approach is WebSocket injection:**
+1. Intercept `WebSocket.prototype.send` to modify outgoing `START_VIS` queries
+2. Maintain an `activeFilters` array with filter objects (`{ operation: 'IN', path: { name: 'field' }, value: [...] }`)
+3. When the user changes filters, set `activeFilters` and call `dashboardComponent.refreshData()`
+4. The interceptor injects the filters into every `START_VIS` message during refresh
+5. To populate filter dropdowns dynamically, send a custom `START_VIS` query via the captured WebSocket with a `cid` prefixed `filter_` (so the interceptor skips it)
+
+See Section 9 of the Embedding Reference for full code patterns, and `examples/opc-revenue-dashboard-embed.html` for a complete working implementation.
 
 ## Calling the REST API
 

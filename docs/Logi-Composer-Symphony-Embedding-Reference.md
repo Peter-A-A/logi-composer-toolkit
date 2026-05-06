@@ -625,155 +625,212 @@ const componentConfig = {
 
 ---
 
-## 9. Cross-Visual Filtering (Pub/Sub)
+## 9. Host-to-Dashboard Filtering (WebSocket Injection)
 
-Cross-visual filtering uses a publish/subscribe pattern to apply filters across embedded components from the host application.
+### 9.1 Overview — What Works and What Doesn't
 
-### 9.1 Event Names
+**IMPORTANT:** The documented pub/sub APIs (`dashboard.trigger('EMBED/PUBLISH', ...)`, `embedManager.publish(topic, message)`, and `initialFilters` with `forTopic`) do NOT reliably push filters into embedded dashboard visuals. Testing confirmed:
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `EMBED/PUBLISH` | Host → Embed | Push filter values into the dashboard |
-| `EMBED/SUBSCRIBE` | Embed → Host | Listen for filter events from the dashboard |
-| `EMBED/UNSUBSCRIBE` | Host → Embed | Stop listening for filter events |
+- `dashboardComponent.trigger('EMBED/PUBLISH', ...)` — **fails** (`trigger is not a function` on `EmbeddedDashboard`)
+- `embedManager.publish(topic, message)` — **fires without error** but the dashboard visuals do not filter. The pub/sub bus is outward-only from the dashboard's perspective: dashboard→host works (you can subscribe), but host→dashboard does not reach the query engine.
+- `initialFilters` with `forTopic` — **accepted by `createComponent`** but does not register a pub/sub subscriber or filter the initial data load.
+- Dispatching `CustomEvent('EMBED/PUBLISH')` on `document` or `dashboardComponent.htmlElement` — **no effect**.
 
-### 9.2 Publishing Filters from Host to Dashboard
+**What DOES work:** Intercepting `WebSocket.prototype.send` to inject filter objects into the `START_VIS` query messages before they reach the server, then calling `dashboardComponent.refreshData()` to trigger new queries.
 
-```javascript
-// Publish an attribute filter
-dashboard.trigger('EMBED/PUBLISH', {
-  sourceId: 'source-id',
-  filter: {
-    type: 'ATTRIBUTE',
-    path: 'country',
-    operation: 'IN',
-    values: ['United States']
-  }
-});
+### 9.2 How It Works
 
-// Publish a time filter
-dashboard.trigger('EMBED/PUBLISH', {
-  sourceId: 'source-id',
-  filter: {
-    type: 'TIME',
-    path: 'launched',
-    timeWindow: {
-      from: '2020-01-01T00:00:00Z',
-      to: '2023-12-31T23:59:59Z'
-    }
-  }
-});
+The embed library uses WebSockets (`wss://<server>/discovery/websocket`) for all data queries. Each visual sends a `START_VIS` message with a `filters` array. By intercepting `WebSocket.prototype.send`, you can inject additional filter objects into that array before the message leaves the browser.
 
-// Clear a filter (publish with null/empty values)
-dashboard.trigger('EMBED/PUBLISH', {
-  sourceId: 'source-id',
-  filter: {
-    type: 'ATTRIBUTE',
-    path: 'country',
-    operation: 'IN',
-    values: []
-  }
-});
-```
+**Architecture:**
+1. **`activeFilters`** — a global array holding the current filter state (empty = no filter)
+2. **WS interceptor** — modifies outgoing `START_VIS` messages to append `activeFilters`
+3. **Apply action** — user selects filter values → sets `activeFilters` → calls `dashboardComponent.refreshData()`
+4. **Refresh** triggers new `START_VIS` queries → interceptor injects filters → server returns filtered data
 
-### 9.3 Subscribing to Filter Events from Dashboard
+### 9.3 Filter Object Format
+
+Filters injected into `START_VIS.filters` use this structure (matching `TAttributeFilter`):
 
 ```javascript
-dashboard.trigger('EMBED/SUBSCRIBE', {
-  callback: (filterEvent) => {
-    console.log('Filter changed in dashboard:', filterEvent);
-    // React to user filter changes within the embedded dashboard
-  }
-});
+// Attribute filter (IN)
+{
+  operation: 'IN',
+  path: { name: 'field_name' },  // field name from the data source
+  value: ['Value1', 'Value2']     // array of string values to include
+}
+
+// Attribute filter (NOT IN)
+{
+  operation: 'NOTIN',
+  path: { name: 'field_name' },
+  value: ['ExcludeThis']
+}
 ```
 
-### 9.4 Full Cross-Visual Filtering Example (HTML + JS)
+The `path` field can be a string (`'field_name'`) or an object (`{ name: 'field_name' }`). The object form is recommended as it matches the format used by the dashboard's own internal queries.
 
-```html
-<script data-name="composer-embed-manager"
-        src="https://YOUR_SERVER/discovery/embed/embed.js"></script>
+### 9.4 WebSocket Interceptor Pattern
 
-<div class="controls">
-  <label>Filter by Country:</label>
-  <select id="country-select">
-    <option value="">All Countries</option>
-    <option value="United States">United States</option>
-    <option value="Canada">Canada</option>
-    <option value="United Kingdom">United Kingdom</option>
-  </select>
+```javascript
+// ── Active filter state ──
+let activeFilters = [];  // Set by UI controls, injected into WS queries
 
-  <label>Date From:</label>
-  <input type="date" id="date-from">
-  <label>To:</label>
-  <input type="date" id="date-to">
-</div>
-
-<div id="dashboard-container" style="width:100%; height:600px;"></div>
-
-<script>
+// ── WebSocket interception ──
 const SOURCE_ID = 'your-source-id';
-let dashboardComponent;
+let embedWebSocket = null;
+const originalWsSend = WebSocket.prototype.send;
 
-const getToken = async () => {
-  const res = await fetch('/api/token', { credentials: 'same-origin' });
-  return res.json();
-};
-
-async function init() {
-  const em = await window.initComposerEmbedManager({ getToken });
-
-  dashboardComponent = await em.createComponent('dashboard', {
-    dashboardId: 'your-dashboard-id',
-    originId: 'your-dashboard-id',
-    theme: '__platform__',
-    header: { visible: false, showTitle: false, showActions: false }
-  });
-
-  dashboardComponent.render(
-    document.getElementById('dashboard-container'),
-    { width: '100%', height: '100%' }
-  );
-}
-
-// Country filter
-document.getElementById('country-select').addEventListener('change', (e) => {
-  const value = e.target.value;
-  dashboardComponent.trigger('EMBED/PUBLISH', {
-    sourceId: SOURCE_ID,
-    filter: {
-      type: 'ATTRIBUTE',
-      path: 'country',
-      operation: 'IN',
-      values: value ? [value] : []
+WebSocket.prototype.send = function(data) {
+  if (typeof data === 'string' && data.includes('START_VIS')) {
+    // Capture the embed library's authenticated WS connection
+    if (!embedWebSocket) {
+      embedWebSocket = this;
     }
-  });
-});
-
-// Date range filter
-function applyDateFilter() {
-  const from = document.getElementById('date-from').value;
-  const to = document.getElementById('date-to').value;
-  if (from && to) {
-    dashboardComponent.trigger('EMBED/PUBLISH', {
-      sourceId: SOURCE_ID,
-      filter: {
-        type: 'TIME',
-        path: 'launched',
-        timeWindow: {
-          from: new Date(from).toISOString(),
-          to: new Date(to).toISOString()
+    // Inject active filters into dashboard queries
+    if (activeFilters.length > 0) {
+      try {
+        const msg = JSON.parse(data);
+        if (msg.type === 'START_VIS' && msg.sourceId === SOURCE_ID) {
+          // Skip our own filter-value queries (identified by cid prefix)
+          if (!msg.cid || !msg.cid.startsWith('filter_')) {
+            msg.filters = (msg.filters || []).concat(activeFilters);
+            data = JSON.stringify(msg);
+          }
         }
-      }
-    });
+      } catch(e) { /* pass through unmodified */ }
+    }
   }
+  return originalWsSend.apply(this, arguments);
+};
+```
+
+### 9.5 Applying Filters
+
+```javascript
+function applyFilter(fieldName, selectedValues) {
+  if (!selectedValues || selectedValues.length === 0) {
+    activeFilters = [];  // Clear = show all data
+  } else {
+    activeFilters = [{
+      operation: 'IN',
+      path: { name: fieldName },
+      value: selectedValues
+    }];
+  }
+  // Trigger refresh — new START_VIS queries will include the injected filters
+  dashboardComponent.refreshData();
 }
 
-document.getElementById('date-from').addEventListener('change', applyDateFilter);
-document.getElementById('date-to').addEventListener('change', applyDateFilter);
-
-init();
-</script>
+// Multiple simultaneous filters
+function applyMultipleFilters(filters) {
+  // filters = [{ field: 'category', values: ['Electronics'] }, { field: 'brand', values: ['Sony'] }]
+  activeFilters = filters
+    .filter(f => f.values && f.values.length > 0)
+    .map(f => ({
+      operation: 'IN',
+      path: { name: f.field },
+      value: f.values
+    }));
+  dashboardComponent.refreshData();
+}
 ```
+
+### 9.6 Querying Distinct Field Values via WebSocket
+
+To populate filter dropdowns dynamically, query the data source for distinct values using the same WebSocket connection:
+
+```javascript
+function queryFieldValues(fieldName, limit) {
+  limit = limit || 50;
+  return new Promise((resolve, reject) => {
+    if (!embedWebSocket || embedWebSocket.readyState !== WebSocket.OPEN) {
+      reject(new Error('Embed WebSocket not available'));
+      return;
+    }
+    const cid = 'filter_' + fieldName + '_' + Date.now();
+
+    function handler(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.cid === cid) {
+          // Server sends ~6 messages per query (status, time range, activity,
+          // viewport, DATA, final status). Only act on data or error.
+          if (msg.data) {
+            const values = msg.data
+              .map(row => row.group && row.group[0])
+              .filter(val => val != null && val !== '');
+            embedWebSocket.removeEventListener('message', handler);
+            resolve(values);
+          } else if (msg.error) {
+            embedWebSocket.removeEventListener('message', handler);
+            reject(new Error(msg.error));
+          }
+          // Otherwise keep listening — the data message hasn't arrived yet
+        }
+      } catch (ex) { /* ignore parse errors */ }
+    }
+
+    embedWebSocket.addEventListener('message', handler);
+
+    const queryMsg = {
+      type: 'START_VIS',
+      cid: cid,
+      cachePolicy: 'UPDATE',
+      player: null,
+      metrics: [{ type: 'FIELD', field: { name: fieldName }, function: 'COUNT' }],
+      time: { from: '+$start_of_data', to: '+$end_of_data', timeField: 'dt' },
+      dimensions: [{
+        aggregations: [{ type: 'TERMS', field: { name: fieldName } }],
+        window: {
+          type: 'COMPOSITE',
+          aggregationWindows: [{
+            limit: limit,
+            sort: {
+              type: 'METRIC', direction: 'DESC',
+              metric: { type: 'FIELD', field: { name: fieldName }, function: 'COUNT' }
+            }
+          }]
+        }
+      }],
+      sourceId: SOURCE_ID,
+      filters: [],
+      aggregateFilters: [],
+      textSearchEnabled: false
+    };
+    embedWebSocket.send(JSON.stringify(queryMsg));
+
+    setTimeout(() => {
+      embedWebSocket.removeEventListener('message', handler);
+      reject(new Error('Query timeout'));
+    }, 10000);
+  });
+}
+```
+
+**Important:** The `cid` for filter-value queries must start with `'filter_'` so the WS interceptor skips them (otherwise your filter-value queries would themselves be filtered).
+
+### 9.7 Subscribing to Dashboard Filter Events (Outbound Only)
+
+The pub/sub system DOES work for listening to filter events the dashboard publishes outward (e.g., when a user clicks a bar in a chart):
+
+```javascript
+embedManager.subscribe('field_name', (message) => {
+  console.log('Dashboard filtered by:', message);
+  // message = { type: 'selection', valueType: 'ATTRIBUTE',
+  //             ranges: [{ operation: 'IN', value: ['clicked_value'] }] }
+});
+```
+
+Topic names match field names (e.g., `'category'`). Subscribing to the label form (e.g., `'Category'`) also works.
+
+### 9.8 Complete Host-to-Dashboard Filter Example
+
+See `examples/opc-revenue-dashboard-embed.html` for a full working implementation with:
+- Login form with Managed API authentication (LogOn → DataDiscoveryToken)
+- Dynamic filter dropdown populated via WebSocket field value query
+- Apply/Reset buttons that set `activeFilters` and call `refreshData()`
+- WebSocket interceptor that injects filters into `START_VIS` queries
 
 ---
 
