@@ -1,0 +1,771 @@
+{
+  "id": "modern",
+  "name": "modern",
+  "system": true,
+  "content": {
+    "customProperties": {
+      "about": {
+        "background": "$colors.brandColor",
+        "color": "$colors.text",
+        "colorSecondary": "$colors.muted",
+        "copyright": "$colors.muted"
+      },
+      "aceEditor": {
+        "aceAutocomplete": {
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "item": {
+            "active": {
+              "background": "$colors.intentBaseActive",
+              "color": "$colors.test"
+            },
+            "background": "$colors.surface",
+            "color": "$colors.test",
+            "hover": {
+              "background": "rgba(222, 222, 222, 0.5)",
+              "color": "$colors.text"
+            },
+            "matchingValueColor": "$colors.intentPrimary",
+            "metaColor": "$colors.muted"
+          }
+        },
+        "codeArea": {
+          "activeLine": {
+            "background": "$colors.intentBaseDisabled",
+            "color": "$colors.text"
+          },
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "color": "$colors.text",
+          "gutter": {
+            "activeLine": {
+              "background": "$colors.intentBaseDisabled",
+              "color": "$colors.text"
+            },
+            "background": "$colors.background",
+            "border": "$colors.border",
+            "color": "$colors.text"
+          }
+        }
+      },
+      "alert": {
+        "icon": {
+          "color": "$colors.text"
+        },
+        "text": {
+          "color": "$colors.text"
+        },
+        "timestamp": {
+          "color": "$colors.muted"
+        }
+      },
+      "buttons": {
+        "base": {
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "color": "$colors.text",
+          "hover": {
+            "background": "$colors.intentBaseHover",
+            "border": "$colors.border"
+          }
+        },
+        "danger": {
+          "background": "$colors.intentDanger",
+          "border": "$colors.intentDanger",
+          "color": "$colors.onPrimary",
+          "disabled": {
+            "background": "$colors.intentDangerBackground",
+            "border": "transparent",
+            "color": "$colors.intentDangerDisabled"
+          },
+          "hover": {
+            "background": "$colors.intentDangerActive",
+            "border": "$colors.intentDangerActive",
+            "color": "$colors.onPrimary"
+          }
+        },
+        "minimal": {
+          "background": "transparent",
+          "border": "transparent",
+          "color": "$colors.muted",
+          "disabled": {
+            "color": "$colors.intentMinimalDisabled"
+          },
+          "hover": {
+            "background": "$colors.intentBaseHover",
+            "border": "transparent",
+            "color": "$colors.text"
+          }
+        },
+        "primary": {
+          "background": "$colors.intentPrimary",
+          "border": "$colors.intentPrimary",
+          "color": "$colors.onPrimary",
+          "disabled": {
+            "background": "$colors.intentPrimaryBackground",
+            "border": "transparent",
+            "color": "$colors.intentPrimaryDisabled"
+          },
+          "hover": {
+            "background": "$colors.intentPrimaryHover",
+            "border": "$colors.intentPrimaryHover"
+          }
+        },
+        "success": {
+          "background": "$colors.intentSuccess",
+          "border": "$colors.intentSuccess",
+          "color": "$colors.onPrimary",
+          "disabled": {
+            "background": "$colors.intentSuccessBackground",
+            "border": "transparent",
+            "color": "$colors.intentSuccessActive"
+          },
+          "hover": {
+            "background": "$colors.intentSuccessActive",
+            "border": "$colors.intentSuccessActive"
+          }
+        },
+        "warning": {
+          "background": "$colors.intentWarning",
+          "border": "$colors.intentWarning",
+          "color": "$colors.onPrimary",
+          "disabled": {
+            "background": "$colors.intentWarningBackground",
+            "border": "transparent",
+            "color": "$colors.intentWarning"
+          },
+          "hover": {
+            "background": "$colors.intentWarningActive",
+            "border": "$colors.intentWarningActive"
+          }
+        }
+      },
+      "calculationEditor": {
+        "footer": {
+          "background": "$colors.surface"
+        }
+      },
+      "callout": {
+        "danger": {
+          "background": "$colors.intentDangerBackground",
+          "border": "$colors.intentDangerBorder",
+          "color": "$colors.text",
+          "icon": "$colors.intentDanger"
+        },
+        "primary": {
+          "background": "$colors.intentPrimaryBackground",
+          "border": "$colors.intentPrimary",
+          "color": "$colors.text",
+          "icon": "$colors.intentPrimary"
+        },
+        "success": {
+          "background": "$colors.intentSuccessBackground",
+          "border": "$colors.intentSuccess",
+          "color": "$colors.text",
+          "icon": "$colors.intentSuccess"
+        },
+        "warning": {
+          "background": "$colors.intentWarningBackground",
+          "border": "$colors.intentWarningBorder",
+          "color": "$colors.text",
+          "icon": "$colors.intentWarning"
+        }
+      },
+      "card": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "header": {
+          "border": "$colors.border",
+          "color": "$colors.text"
+        },
+        "hover": {
+          "border": "$colors.intentPrimary"
+        }
+      },
+      "chartLegend": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "hover": {
+          "background": "$colors.intentBaseHover"
+        },
+        "title": "$colors.text"
+      },
+      "chartTooltip": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "header": {
+          "background": "$colors.background",
+          "border": "$colors.border",
+          "color": "$colors.text"
+        }
+      },
+      "charts": {
+        "base": {
+          "axisLabelColor": "$colors.text",
+          "axisLineColor": "$colors.text",
+          "color": "$colors.text",
+          "gridLineColor": "$colors.border",
+          "pointerColor": "$colors.text",
+          "pointerLabelBg": "$colors.surface",
+          "pointerLabelColor": "$colors.onSurface",
+          "tooltipBackground": "$colors.surface",
+          "tooltipBorder": "$colors.border",
+          "tooltipColor": "$colors.onSurface"
+        },
+        "kpi": {
+          "titleColor": "$colors.text"
+        },
+        "map": {
+          "areaColor": "$colors.backgroundVariant",
+          "areaColorHover": "$colors.intentMinimal",
+          "areaStrokeColor": "$colors.surface"
+        },
+        "pivot": {
+          "headerBackground": "$colors.background",
+          "headerBorder": "$colors.border",
+          "headerColor": "$colors.text",
+          "rowHoverBg": "$colors.intentBaseHover",
+          "valueColor": "$colors.onSurface"
+        },
+        "rawDataTable": {
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "color": "$colors.onSurface",
+          "headerBackground": "$colors.background",
+          "headerBorder": "$colors.border",
+          "headerColor": "$colors.text",
+          "rowAlternateBackground": "$colors.background",
+          "rowHoverBackground": "$colors.intentBaseHover",
+          "rowSelectedBackground": "$colors.intentPrimaryBackground"
+        }
+      },
+      "checkbox": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "checked": "$colors.intentPrimary",
+        "color": "$colors.text",
+        "hover": "$colors.intentPrimaryBackground"
+      },
+      "colorPalette": {
+        "activeIconColor": "$colors.text",
+        "background": "$colors.background"
+      },
+      "createAlertDialog": {
+        "summaryPanel": {
+          "background": "$colors.background",
+          "primaryLine": {
+            "color": "$colors.text"
+          },
+          "secondaryLine": {
+            "color": "$colors.muted"
+          }
+        }
+      },
+      "crossSourceLinksConfig": {
+        "infoMessage": {
+          "background": "$colors.intentInfoBackground",
+          "border": "$colors.intentInfoBorder",
+          "color": "$colors.text"
+        }
+      },
+      "crossVisual": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "item": {
+          "active": {
+            "background": "$colors.intentPrimary",
+            "color": "$colors.onPrimary"
+          },
+          "hover": {
+            "background": "$colors.intentBaseHover"
+          }
+        }
+      },
+      "dashboard": {
+        "background": "$colors.background",
+        "text": "$colors.onBackground",
+        "layout": {
+          "widgetGaps": "4px"
+        }
+      },
+      "dashboardList": {
+        "cardBorder": "$colors.border",
+        "item": {
+          "hover": "$colors.intentBaseHover"
+        },
+        "separator": "$colors.border"
+      },
+      "dataDetails": {
+        "background": "$colors.surface",
+        "color": "$colors.text",
+        "header": {
+          "border": "$colors.border",
+          "color": "$colors.text"
+        },
+        "item": {
+          "border": "$colors.border"
+        },
+        "title": {
+          "background": "$colors.background"
+        }
+      },
+      "datePicker": {
+        "background": "$colors.surface",
+        "color": "$colors.text",
+        "header": {
+          "border": "$colors.border"
+        },
+        "item": {
+          "active": {
+            "background": "$colors.intentPrimary",
+            "color": "$colors.onPrimary"
+          },
+          "hover": {
+            "background": "$colors.intentBaseHover",
+            "color": "$colors.text"
+          },
+          "rangeBackground": "$colors.intentPrimaryBackground"
+        }
+      },
+      "dialog": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "header": {
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "color": "$colors.onSurface"
+        },
+        "warningMessage": {
+          "background": "$colors.intentWarningBackground",
+          "border": "$colors.intentWarningBorder",
+          "color": "$colors.intentWarning",
+          "icon": "$colors.intentWarning"
+        }
+      },
+      "homePage": {
+        "background": "$colors.background",
+        "backgroundVariant": "$colors.backgroundVariant",
+        "color": "$colors.text"
+      },
+      "icons": {
+        "color": "$colors.intentMinimal"
+      },
+      "input": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "disabled": {
+          "background": "$colors.intentMinimalDisabled"
+        },
+        "label": "$colors.text",
+        "placeholder": "$colors.muted",
+        "text": "$colors.text"
+      },
+      "list": {
+        "bg": "$colors.surface",
+        "border": {
+          "color": "$colors.intentBaseActive",
+          "warningColor": "$colors.intentWarning"
+        },
+        "item": {
+          "active": {
+            "bg": "$colors.intentBaseActive",
+            "color": "$colors.onSurface"
+          },
+          "bg": "$colors.surface",
+          "color": "$colors.text",
+          "hover": {
+            "bg": "$colors.intentBaseHover",
+            "color": "$colors.onSurface"
+          }
+        }
+      },
+      "loader": {
+        "background": "rgba(247, 247, 247, 0.75)"
+      },
+      "menu": {
+        "active": {
+          "bg": "$colors.intentBaseActive",
+          "color": "$colors.text"
+        },
+        "bg": "$colors.surface",
+        "color": "$colors.text",
+        "disabled": "$colors.intentMinimalDisabled",
+        "divider": {
+          "color": "$colors.border"
+        },
+        "hover": {
+          "bg": "$colors.intentBaseHover",
+          "color": "$colors.text"
+        }
+      },
+      "metaDataPicker": {
+        "background": "$colors.surface",
+        "color": "$colors.text",
+        "item": {
+          "aggrHover": "$colors.intentBaseHover",
+          "border": "$colors.border",
+          "hover": {
+            "bg": "$colors.intentBaseHover"
+          }
+        },
+        "secondary": "$colors.muted"
+      },
+      "modal": {
+        "background": "$colors.surface",
+        "color": "$colors.text"
+      },
+      "multiSelect": {
+        "background": "$colors.surface",
+        "color": "$colors.text",
+        "disabled": {
+          "background": "$colors.intentMinimalDisabled"
+        },
+        "tagBackground": "$colors.intentBaseHover",
+        "tagColor": "$colors.onSurface"
+      },
+      "navbar": {
+        "background": "$colors.primaryVariant",
+        "colorInactive": "$colors.muted",
+        "menu": {
+          "background": "$colors.primaryVariant",
+          "color": "$colors.onPrimary",
+          "divider": "rgba(255, 255, 255, 0.15)",
+          "itemActive": "$colors.intentPrimary",
+          "itemHover": "$colors.intentMinimalHover"
+        },
+        "tabActive": "rgba(138, 155, 168, 0.3)",
+        "tabBorderActive": "$colors.secondary",
+        "tabFontActive": "$colors.onPrimary",
+        "tabHover": "rgba(138, 155, 168, 0.15)"
+      },
+      "placeholder": {
+        "border": "$colors.muted",
+        "text": "$colors.text"
+      },
+      "popover": {
+        "background": "$colors.surface",
+        "color": "$colors.onSurface",
+        "footer": {
+          "background": "#dedede"
+        },
+        "title": {
+          "background": "#4a4a4a",
+          "color": "$colors.onPrimary"
+        }
+      },
+      "popup": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "closeBtn": "#999999",
+        "closeBtnHover": "#7a7a7a",
+        "color": "$colors.text"
+      },
+      "pubSubList": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "item": {
+          "active": "$colors.intentPrimaryBackground",
+          "hover": "$colors.intentBaseHover"
+        }
+      },
+      "radialMenu": {
+        "background": "$colors.surface",
+        "backgroundActive": "$colors.intentPrimary",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "colorActive": "$colors.onPrimary",
+        "hover": "$colors.intentBaseHover"
+      },
+      "radio": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "checked": "$colors.intentPrimary",
+        "color": "$colors.text"
+      },
+      "resourcesTable": {
+        "cell": {
+          "hover": "$colors.intentBaseHover"
+        },
+        "header": {
+          "background": "$colors.background",
+          "border": "$colors.border"
+        }
+      },
+      "schedule": {
+        "background": "$colors.surface",
+        "border": "$colors.border"
+      },
+      "searchBar": {
+        "background": "$colors.background",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "placeholder": "$colors.muted"
+      },
+      "security": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text"
+      },
+      "select": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "hover": {
+          "border": "$colors.intentMinimal"
+        },
+        "item": {
+          "active": "$colors.intentPrimary",
+          "activeText": "$colors.onPrimary",
+          "hover": "$colors.intentBaseHover"
+        },
+        "menu": {
+          "background": "$colors.surface",
+          "border": "$colors.border"
+        }
+      },
+      "suggest": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "hover": "$colors.intentBaseHover"
+      },
+      "switch": {
+        "background": "$colors.intentMinimalDisabled",
+        "checked": "$colors.intentPrimary",
+        "color": "$colors.text",
+        "handleBackground": "$colors.surface"
+      },
+      "tables": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text",
+        "header": {
+          "background": "$colors.background",
+          "border": "$colors.border",
+          "color": "$colors.onSurface"
+        },
+        "row": {
+          "alternateBackground": "$colors.background",
+          "background": "$colors.surface",
+          "hover": "$colors.intentBaseHover",
+          "selectedBackground": "$colors.intentPrimaryBackground"
+        }
+      },
+      "tag": {
+        "background": "$colors.intentBaseActive",
+        "color": "$colors.text",
+        "delete": "$colors.intentMinimal",
+        "deleteHover": "$colors.intentDanger",
+        "hover": {
+          "color": "$colors.text"
+        }
+      },
+      "thumbnail": {
+        "background": "$colors.background",
+        "border": "$colors.border"
+      },
+      "timebar": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.onSurface",
+        "miniMap": {
+          "background": "$colors.background"
+        },
+        "scrubber": {
+          "handleBackground": "$colors.surface",
+          "handleBorder": "$colors.intentMinimal",
+          "lineColor": "$colors.intentMinimal",
+          "maskBackground": "rgba(0, 0, 0, 0.07)"
+        },
+        "selection": {
+          "activeBorder": "$colors.intentPrimary",
+          "activeColor": "$colors.intentPrimary",
+          "inactiveColor": "$colors.onSurface"
+        }
+      },
+      "toast": {
+        "background": "#333333",
+        "color": "#f5f8fa",
+        "danger": {
+          "background": "$colors.intentDanger"
+        },
+        "success": {
+          "background": "$colors.intentSuccess"
+        },
+        "warning": {
+          "background": "$colors.intentWarning"
+        }
+      },
+      "tooltip": {
+        "background": "$colors.onBackground",
+        "color": "$colors.onPrimary"
+      },
+      "topPanel": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "color": "$colors.text"
+      },
+      "visualEditor": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "chartArea": {
+          "background": "$colors.background"
+        },
+        "color": "$colors.onSurface",
+        "header": {
+          "border": "$colors.border",
+          "color": "$colors.text"
+        },
+        "tab": {
+          "active": "$colors.onSurface",
+          "hover": "$colors.text",
+          "inactive": "$colors.muted"
+        },
+        "toolbar": {
+          "background": "$colors.surface"
+        }
+      },
+      "visualEditorCollapsible": {
+        "background": "$colors.background",
+        "color": "$colors.onSurface",
+        "hover": {
+          "color": "$colors.text"
+        }
+      },
+      "visualizationSpinner": {
+        "background": "rgba(255, 255, 255, 0.7)",
+        "color": "$colors.intentPrimary"
+      },
+      "widget": {
+        "background": "$colors.surface",
+        "border": "$colors.border",
+        "caption": "$colors.text",
+        "color": "$colors.onSurface",
+        "header": {
+          "color": "$colors.onSurface",
+          "icon": "$colors.intentMinimal"
+        },
+        "hover": {
+          "border": "$colors.intentMinimal"
+        },
+        "toolbar": {
+          "background": "$colors.surface",
+          "border": "$colors.border",
+          "color": "$colors.onSurface",
+          "hover": {
+            "background": "$colors.intentBaseHover",
+            "color": "$colors.text"
+          }
+        }
+      }
+    },
+    "variables": {
+      "breakpoints": ["320px", "568px", "768px", "1024px", "1200px"],
+      "colors": {
+        "accentColor": "rgba(19, 124, 189, 0.5)",
+        "background": "#f7f7f7",
+        "backgroundVariant": "#dedede",
+        "border": "#cccccc",
+        "brandColor": "#182C44",
+        "intentBase": "#f7f7f7",
+        "intentBaseActive": "#dedede",
+        "intentBaseDisabled": "#e8e8e8",
+        "intentBaseHover": "#f0f0f0",
+        "intentDanger": "#db3737",
+        "intentDangerActive": "#c23030",
+        "intentDangerBackground": "rgba(219, 55, 55, .2)",
+        "intentDangerBorder": "#db3737",
+        "intentDangerDisabled": "#a82a2a",
+        "intentDangerHover": "#f55656",
+        "intentInfoBackground": "#e8f4fc",
+        "intentInfoBorder": "#007ac9",
+        "intentMinimal": "#5c7080",
+        "intentMinimalActive": "rgba(115, 134, 148, 0.3)",
+        "intentMinimalDisabled": "rgba(167, 182, 194, 0.6)",
+        "intentMinimalHover": "rgba(167, 182, 194, 0.3)",
+        "intentPrimary": "#137cbd",
+        "intentPrimaryActive": "#0e5a8a",
+        "intentPrimaryBackground": "rgba(19, 124, 189, .15)",
+        "intentPrimaryDisabled": "rgba(19, 124, 189, 0.5)",
+        "intentPrimaryHover": "#106ba3",
+        "intentSuccess": "#9bbf30",
+        "intentSuccessActive": "#728c23",
+        "intentSuccessBackground": "rgba(155, 191, 48, .15)",
+        "intentWarning": "#f29d49",
+        "intentWarningActive": "#bf7326",
+        "intentWarningBackground": "rgba(242, 157, 73, .15)",
+        "intentWarningBorder": "#f29d49",
+        "linkColor": "#137cbd",
+        "message": "#394b59",
+        "muted": "#8a9ba8",
+        "onBackground": "#394b59",
+        "onBackgroundVariant": "#182C44",
+        "onPrimary": "#fff",
+        "onSurface": "#394b59",
+        "panelBorder": "#ddd",
+        "primary": "#182C44",
+        "primaryVariant": "#1D384B",
+        "secondary": "#e8e8e8",
+        "surface": "#fff",
+        "text": "#182C44"
+      },
+      "fontSizes": [12, 14, 16, 18, 24, 32, 48, 64, 72],
+      "fontWeights": {
+        "bold": 700,
+        "heading": 500,
+        "lightest": 100,
+        "normal": 400
+      },
+      "fonts": {
+        "body": "\"Source Sans Pro\", system-ui, sans-serif",
+        "heading": "\"Source Sans Pro\", system-ui, sans-serif",
+        "monospace": "Monaco, Menlo, \"Ubuntu Mono\", Consolas, source-code-pro, monospace"
+      },
+      "lineHeights": {
+        "body": 1.25,
+        "heading": 1.125
+      },
+      "links": {
+        "primary": {
+          "color": "intentPrimary"
+        }
+      },
+      "palettes": {
+        "DefaultSequential": {
+          "2": ["#ffc65f", "#0096b6"],
+          "3": ["#ffc65f", "#9eb778", "#0096b6"],
+          "4": ["#ffd27c", "#ccbd67", "#7eb184", "#008db6"],
+          "5": ["#ffd27c", "#ccbd67", "#7eb184", "#0096b6", "#0082b5"],
+          "6": ["#ffd27c", "#efc15e", "#9eb778", "#7eb184", "#0096b6", "#0082b5"],
+          "7": ["#ffd27c", "#efc15e", "#9eb778", "#7eb184", "#43a79b", "#008db6", "#097bb1"],
+          "8": ["#ffdc9c", "#ffc65f", "#efc15e", "#9eb778", "#7eb184", "#43a79b", "#008db6", "#097bb1"],
+          "9": ["#ffdc9c", "#ffc65f", "#efc15e", "#9eb778", "#7eb184", "#43a79b", "#0096b6", "#008db6", "#097bb1"]
+        }
+      },
+      "radii": {
+        "base": "3px",
+        "button": "3px",
+        "card": "3px",
+        "input": "3px",
+        "widget": "6px"
+      },
+      "shadows": {
+        "elevation1": "0px 4px 6px -1px rgba(24, 44, 68, 0.1), 0px 2px 4px -1px rgba(24, 44, 68, 0.06)",
+        "elevation2": "0px 10px 15px -3px rgba(24, 44, 68, 0.1), 0px 4px 6px -2px rgba(24, 44, 68, 0.05)"
+      },
+      "sizes": {
+        "controlHeight": "30px",
+        "fontSize": "14px",
+        "iconSize": "16px",
+        "widgetHeader": "28px"
+      },
+      "space": [0, 4, 8, 16, 32, 64, 128, 256, 512]
+    }
+  }
+}
